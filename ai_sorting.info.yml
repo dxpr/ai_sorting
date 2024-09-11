@@ -1,0 +1,9 @@
+name: 'AI Sorting'
+type: module
+description: 'Provides an AI-based sorting plugin using the UCB2 algorithm for Drupal Views, extending the Statistics module.'
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - drupal:views
+  - drupal:statistics
+configure: ai_sorting.settings_form

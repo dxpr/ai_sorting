@@ -1,0 +1,52 @@
+<?php
+
+/**
+ * @file
+ * Primary module file for AI Sorting.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\views\ViewExecutable;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_help().
+ */
+function ai_sorting_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.ai_sorting':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the UCB2 algorithm.') . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_views_pre_render().
+ */
+function ai_sorting_views_pre_render(ViewExecutable $view) {
+  if (!empty($view->style_plugin) && $view->style_plugin->usesFields()) {
+    $nids = [];
+    foreach ($view->result as $row) {
+      if (isset($row->nid)) {
+        $nids[] = $row->nid;
+      }
+    }
+    
+    if (!empty($nids)) {
+      $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting';
+      $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
+        'nids' => $nids,
+        'incrementTrialsUrl' => Url::fromRoute('ai_sorting.increment_trials')->toString(),
+      ];
+    }
+  }
+}
+
+/**
+ * Implements hook_page_attachments().
+ */
+function ai_sorting_page_attachments(array &$attachments) {
+  $attachments['#attached']['drupalSettings']['aiSorting']['csrfToken'] = \Drupal::csrfToken()->get('ai_sorting_increment_trials');
+}

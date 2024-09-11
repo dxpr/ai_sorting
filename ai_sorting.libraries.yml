@@ -1,0 +1,7 @@
+ai_sorting:
+  js:
+    js/ai-sorting.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+    - core/drupalSettings

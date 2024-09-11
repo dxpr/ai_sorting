@@ -1,0 +1,4 @@
+services:
+  ai_sorting.ucb2_calculator:
+    class: Drupal\ai_sorting\Service\UCB2Calculator
+    arguments: ['@database', '@state', '@config.factory']

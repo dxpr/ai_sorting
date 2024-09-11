@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the AI Sorting module.
+ */
+
+use Drupal\Core\Database\Database;
+
+/**
+ * Implements hook_install().
+ */
+function ai_sorting_install() {
+  $schema = Database::getConnection()->schema();
+  $spec = [
+    'description' => 'The number of times this node has been shown in AI-sorted views.',
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  ];
+  $schema->addField('node_counter', 'ai_sorting_trials', $spec);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ai_sorting_uninstall() {
+  $schema = Database::getConnection()->schema();
+  if ($schema->fieldExists('node_counter', 'ai_sorting_trials')) {
+    $schema->dropField('node_counter', 'ai_sorting_trials');
+  }
+}
