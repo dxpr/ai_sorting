@@ -6,6 +6,7 @@ use Drupal\views\Plugin\views\sort\SortPluginBase;
 use Drupal\views\ResultRow;
 use Drupal\ai_sorting\Service\UCB2Calculator;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\views\Views;
 
 /**
  * AI-based sorting plugin for Views.
@@ -55,6 +56,19 @@ class AISorting extends SortPluginBase {
    */
   public function query() {
     $this->ensureMyTable();
-    $this->query->addOrderBy(NULL, "({$this->tableAlias}.totalcount / GREATEST({$this->tableAlias}.ai_sorting_trials, 1))", $this->options['order'], $this->tableAlias . '_ucb2_score');
+    $this->query->addOrderBy(
+      NULL,
+      "COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)",
+      $this->options['order'],
+      'node_ucb2_score'
+    );
+    $join = Views::pluginManager('join')->createInstance('standard', [
+      'table' => 'node_counter',
+      'field' => 'nid',
+      'left_table' => 'node_field_data',
+      'left_field' => 'nid',
+      'type' => 'LEFT',
+    ]);
+    $this->query->addRelationship('node_counter', $join, 'node_field_data');
   }
 }
