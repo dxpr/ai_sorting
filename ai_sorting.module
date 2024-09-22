@@ -50,3 +50,16 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
 function ai_sorting_page_attachments(array &$attachments) {
   $attachments['#attached']['drupalSettings']['aiSorting']['csrfToken'] = \Drupal::csrfToken()->get('ai_sorting_increment_trials');
 }
+
+/**
+ * Implements hook_views_data_alter().
+ */
+function ai_sorting_views_data_alter(array &$data) {
+  $data['node']['ai_sorting'] = [
+    'title' => t('AI Sorting'),
+    'help' => t('Sort content using AI-based algorithm.'),
+    'sort' => [
+      'id' => 'ai_sorting',
+    ],
+  ];
+}
