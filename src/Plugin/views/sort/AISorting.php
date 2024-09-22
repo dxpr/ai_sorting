@@ -58,7 +58,7 @@ class AISorting extends SortPluginBase {
     $this->ensureMyTable();
     $this->query->addOrderBy(
       NULL,
-      "COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)",
+      "(COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + (RAND() * 0.000001)",
       $this->options['order'],
       'node_ucb2_score'
     );
