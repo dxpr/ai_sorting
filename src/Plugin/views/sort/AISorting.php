@@ -56,12 +56,32 @@ class AISorting extends SortPluginBase {
    */
   public function query() {
     $this->ensureMyTable();
+  
+    // Calculate the total number of trials across all nodes.
+    // This is essential for the UCB1 exploration term.
+    // Using a subquery to sum ai_sorting_trials from node_counter.
+    // Note: Depending on the database size, this may impact performance.
+    $totalTrialsSubquery = "(SELECT SUM(COALESCE(ai_sorting_trials, 1)) FROM node_counter)";
+  
+    // Define constants for the UCB1 algorithm.
+    // alpha: exploration parameter. Typically set to 2 for UCB1.
+    $alpha = 2;
+  
+    // Construct the UCB1 formula within the ORDER BY clause.
+    // UCB1 = (totalcount / ai_sorting_trials) + sqrt((alpha * ln(totalTrials)) / ai_sorting_trials)
+    $ucb1Formula = "(COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
+                  "SQRT(($alpha * LN($totalTrialsSubquery)) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
+                  "(RAND() * 0.000001)";
+  
+    // Add the ORDER BY clause with the UCB1 formula.
     $this->query->addOrderBy(
       NULL,
-      "(COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + (RAND() * 0.000001)",
+      $ucb1Formula,
       $this->options['order'],
-      'node_ucb2_score'
+      'node_ucb1_score'
     );
+  
+    // Add the necessary JOIN to the node_counter table.
     $join = Views::pluginManager('join')->createInstance('standard', [
       'table' => 'node_counter',
       'field' => 'nid',
