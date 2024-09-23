@@ -89,6 +89,22 @@ The AI Sorting module provides an intelligent sorting mechanism for Drupal Views
 - **Use Custom Click Tracking** for personalization and when immediate, view-specific data is needed.
 - **Use Statistics Module Tracking** to feature content with proven overall popularity.
 
+## Performance and Caching
+
+While it may seem impossible to implement machine learning algorithms directly in PHP within Drupal, we accomplished something unique: we engineered the AI sorting algorithm purely in SQL. By leveraging the power of modern relational database platforms, we bypassed the limitations of PHP and unlocked an efficient, scalable solution for creating an AI powered digital experience.
+
+To remove any doubt about the module's scalability, we conducted extensive stress testing, sorting 1,000, 10,000, and even 100,000 nodes:
+
+| Number of Nodes  | AI Sort Time (ms) | Sort by ID Time (ms) |
+|------------------|-------------------|----------------------------|
+| 1,000            | 56                | 44                         |
+| 10,000           | 83                | 48                         |
+| 100,000          | 326               | 66                         |
+
+Our SQL-based AI sort handles even large datasets efficiently, though it naturally takes a bit more time compared to the simpler "Sort by ID" method. These results demonstrate that our solution can scale well, even when sorting 100,000 nodes.
+
+That said, we recommend enabling caching in production environments. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is optimal. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect the exploration aspect of the algorithm, which benefits from up-to-date data.
+
 ## How does it work?
 
 ### ELI5 (Explain like I'm five)
