@@ -10,6 +10,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\ai_sorting\Service\TotalTrialsService;
 use Drupal\views\ViewsHandler;
+use Drupal\Core\Link;
 
 /**
  * AI-based sorting plugin for Views.
@@ -127,14 +128,27 @@ class AISorting extends SortPluginBase {
       '#title' => $this->t('AI Sorting Settings'),
     ];
 
+    $url = Url::fromUri('https://medium.com/analytics-vidhya/multi-armed-bandit-analysis-of-upper-confidence-bound-algorithm-4b84be516047', [
+      'attributes' => [
+        'target' => '_blank',
+        'rel' => 'noopener noreferrer',
+      ],
+    ]);
+    $link = Link::fromTextAndUrl($this->t('Learn more about the UCB algorithm'), $url);
+
     $form['ucb1_settings']['alpha'] = [
       '#type' => 'number',
-      '#title' => $this->t('Alpha'),
-      '#description' => $this->t('The exploration parameter for the UCB1 algorithm. Higher values encourage exploration.'),
-      '#default_value' => isset($this->options['alpha']) ? $this->options['alpha'] : 1.0,
-      '#step' => 0.1,
-      '#min' => 0.1,
+      '#title' => $this->t('Exploration-Exploitation Balance'),
+      '#default_value' => $this->options['alpha'],
+      '#min' => 0,
       '#max' => 10,
+      '#step' => 0.1,
+      '#description' => $this->t('Controls the balance between exploring new options and exploiting known successful options. Higher values encourage more exploration. Typical values range from 1 to 3. A lower value (closer to 0) will favor showing content that has performed well in the past. A higher value will encourage trying out more varied content. @link', [
+        '@link' => $link->toString(),
+      ]),
+      '#field_prefix' => $this->t('Alpha:'),
+      '#field_suffix' => $this->t('(0.0 to 10.0)'),
+      '#required' => TRUE,
     ];
   }
 
