@@ -49,18 +49,12 @@ class AISortingController extends ControllerBase {
    */
   public function trackClick(Request $request) {
     $data = json_decode($request->getContent(), TRUE);
-    \Drupal::logger('ai_sorting')->notice('Received data: @data', ['@data' => print_r($data, TRUE)]);
 
     $nid = $data['nid'] ?? NULL;
     $view_id = $data['view_id'] ?? NULL;
     $display_id = $data['display_id'] ?? NULL;
 
     if (empty($nid) || empty($view_id) || empty($display_id)) {
-      \Drupal::logger('ai_sorting')->error('Invalid input: nid=@nid, view_id=@view_id, display_id=@display_id', [
-        '@nid' => $nid,
-        '@view_id' => $view_id,
-        '@display_id' => $display_id,
-      ]);
       return new JsonResponse(['error' => 'Invalid input'], 400);
     }
 

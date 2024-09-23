@@ -71,13 +71,6 @@ class AISorting extends SortPluginBase {
   public function query() {
     $this->ensureMyTable();
 
-    \Drupal::logger('ai_sorting')->notice('query() called');
-    // Log the view and display ID.
-    \Drupal::logger('ai_sorting')->notice('AI Sorting query() called for view: @view_id, display: @display_id', [
-      '@view_id' => $this->view->id(),
-      '@display_id' => $this->view->current_display,
-    ]);
-
     // Retrieve the total_trials from the service.
     $view_id = $this->view->id();
     $display_id = $this->view->current_display;
@@ -90,9 +83,6 @@ class AISorting extends SortPluginBase {
     $ucb1Formula = "(COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
                   "SQRT(($alpha * LN($totalTrials)) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
                   "(RAND() * 0.000001)";
-
-    // Log the UCB1 formula.
-    \Drupal::logger('ai_sorting')->notice('UCB1 Formula: @formula', ['@formula' => $ucb1Formula]);
 
     // Always use DESC order for UCB1 scores.
     $this->query->addOrderBy(
