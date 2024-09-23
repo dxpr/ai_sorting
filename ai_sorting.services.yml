@@ -1,0 +1,4 @@
+services:
+  ai_sorting.total_trials_service:
+    class: Drupal\ai_sorting\Service\TotalTrialsService
+    arguments: ['@database', '@date.formatter']

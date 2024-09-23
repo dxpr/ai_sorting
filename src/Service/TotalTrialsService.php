@@ -114,4 +114,64 @@ class TotalTrialsService {
 
     return $this->getTotalTrials($view_id, $display_id) ?? $increment;
   }
+
+  /**
+   * Calculates and updates the total trials for a specific view and display.
+   *
+   * @param \Drupal\views\ViewExecutable $view
+   *   The view executable object.
+   *
+   * @return int
+   *   The total number of trials.
+   */
+  public function calculateAndUpdateTotalTrials($view) {
+    // Clone the original query.
+    $cloned_query = clone $view->build_info['query'];
+
+    // Remove the LIMIT from the cloned query.
+    $cloned_query->range();
+
+    // Remove the node_ucb1_score expression from the query.
+    $expressions = &$cloned_query->getExpressions();
+    unset($expressions['node_ucb1_score']);
+
+    // Remove the ORDER BY clause that uses node_ucb1_score.
+    $orderby = &$cloned_query->getOrderBy();
+    foreach ($orderby as $key => $order) {
+      if (strpos($key, 'node_ucb1_score') !== false) {
+        unset($orderby[$key]);
+      }
+    }
+
+    // Add SUM of ai_sorting_trials to the query.
+    $cloned_query->addExpression('SUM(COALESCE(node_counter.ai_sorting_trials, 0))', 'total_ai_sorting_trials');
+
+    // Remove all fields to ensure we're only getting the sum.
+    $fields = &$cloned_query->getFields();
+    $fields = [];
+
+    // Execute the cloned query and fetch the result.
+    try {
+      $cloned_result = $cloned_query->execute();
+      $total_trials = (int) $cloned_result->fetchField();
+
+      // Update the total trials in the database.
+      $view_id = $view->id();
+      $display_id = $view->current_display;
+
+      $this->database->merge('ai_sorting_total_trials')
+        ->key(['view_id' => $view_id, 'display_id' => $display_id])
+        ->fields([
+          'total_trials' => $total_trials,
+          'changed' => \Drupal::time()->getRequestTime(),
+        ])
+        ->execute();
+
+      return $total_trials;
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('ai_sorting')->error('Error executing Cloned Query: @error', ['@error' => $e->getMessage()]);
+      return 0;
+    }
+  }
 }

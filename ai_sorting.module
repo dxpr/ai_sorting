@@ -8,7 +8,6 @@
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\views\ViewExecutable;
 use Drupal\Core\Url;
-use Drupal\Core\Database\Database;
 use Drupal\views\Plugin\views\query\Sql;
 
 /**
@@ -70,56 +69,14 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       \Drupal::logger('ai_sorting')->error('Error executing Original Query: @error', ['@error' => $e->getMessage()]);
     }
 
-    // Create a new query object based on the original query.
-    $cloned_query = clone $view->build_info['query'];
-
-    // Remove only the LIMIT from the cloned query.
-    $cloned_query->range();
-    
-    // Remove the node_ucb1_score expression from the query.
-    $expressions = &$cloned_query->getExpressions();
-    unset($expressions['node_ucb1_score']);
-
-    // Remove the ORDER BY clause that uses node_ucb1_score.
-    $orderby = &$cloned_query->getOrderBy();
-    foreach ($orderby as $key => $order) {
-        if (strpos($key, 'node_ucb1_score') !== false) {
-            unset($orderby[$key]);
-        }
-    }
-
-    // Add SUM of ai_sorting_trials to the query.
-    $cloned_query->addExpression('SUM(COALESCE(node_counter.ai_sorting_trials, 0))', 'total_ai_sorting_trials');
-
-    // Remove all fields to ensure we're only getting the sum.
-    $fields = &$cloned_query->getFields();
-    $fields = [];
-
-    // Log the modified cloned query.
-    $modified_query_string = $cloned_query->__toString();
-    \Drupal::logger('ai_sorting')->notice('Q: @query', ['@query' => $modified_query_string]);
-
-    // Execute the cloned query and log the results.
-    try {
-      $cloned_result = $cloned_query->execute();
-      $cloned_data = $cloned_result->fetchAll(\PDO::FETCH_ASSOC);
-      $cloned_result_string = print_r($cloned_data, TRUE);
-      \Drupal::logger('ai_sorting')->notice('O: @results', ['@results' => $cloned_result_string]);
-    }
-    catch (\Exception $e) {
-      \Drupal::logger('ai_sorting')->error('Error executing Cloned Query: @error', ['@error' => $e->getMessage()]);
-    }
-
-    // Utilize the TotalTrialsService to manage total trials.
+    // Utilize the TotalTrialsService to calculate and update total trials.
     /** @var \Drupal\ai_sorting\Service\TotalTrialsService $total_trials_service */
     $total_trials_service = \Drupal::service('ai_sorting.total_trials_service');
-    $view_id = $view->id();
-    $display_id = $view->current_display;
-    $total_trials = $total_trials_service->incrementTotalTrials($view_id, $display_id);
+    $total_trials = $total_trials_service->calculateAndUpdateTotalTrials($view);
 
     \Drupal::logger('ai_sorting')->notice('Total Trials for view @view_id and display @display_id: @total', [
-      '@view_id' => $view_id,
-      '@display_id' => $display_id,
+      '@view_id' => $view->id(),
+      '@display_id' => $view->current_display,
       '@total' => $total_trials,
     ]);
   }
