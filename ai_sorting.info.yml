@@ -6,4 +6,3 @@ package: Custom
 dependencies:
   - drupal:views
   - drupal:statistics
-configure: ai_sorting.settings_form

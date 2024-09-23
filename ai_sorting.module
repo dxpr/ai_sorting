@@ -28,19 +28,18 @@ function ai_sorting_help($route_name, RouteMatchInterface $route_match) {
  * Implements hook_views_pre_render().
  */
 function ai_sorting_views_pre_render(ViewExecutable $view) {
-  // Check if the view query is an instance of Sql
+  // Check if the view query is an instance of Sql.
   if (!($view->query instanceof Sql)) {
     return;
   }
 
-  // Check if the query contains 'node_ucb1_score'
+  // Check if the query contains 'node_ucb1_score'.
   $query_string = $view->build_info['query']->__toString();
   if (strpos($query_string, 'node_ucb1_score') === FALSE) {
     return;
   }
 
-  // If we've reached this point, the query contains 'node_ucb1_score'
-  // Proceed with AI sorting logic
+  // Proceed with AI sorting logic.
   if (!empty($view->style_plugin) && $view->style_plugin->usesFields()) {
     $nids = [];
     foreach ($view->result as $row) {
@@ -57,10 +56,10 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       ];
     }
 
-    // Log the original query
+    // Log the original query.
     \Drupal::logger('ai_sorting')->notice('Q: @query', ['@query' => $query_string]);
 
-    // Execute the original query and log the results
+    // Execute the original query and log the results.
     try {
       $original_result = $view->build_info['query']->execute();
       $original_data = $original_result->fetchAll(\PDO::FETCH_ASSOC);
@@ -71,17 +70,17 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       \Drupal::logger('ai_sorting')->error('Error executing Original Query: @error', ['@error' => $e->getMessage()]);
     }
 
-    // Create a new query object based on the original query
+    // Create a new query object based on the original query.
     $cloned_query = clone $view->build_info['query'];
 
-    // Remove only the LIMIT from the cloned query
+    // Remove only the LIMIT from the cloned query.
     $cloned_query->range();
     
-    // Remove the node_ucb1_score expression from the query
+    // Remove the node_ucb1_score expression from the query.
     $expressions = &$cloned_query->getExpressions();
     unset($expressions['node_ucb1_score']);
 
-    // Remove the ORDER BY clause that uses node_ucb1_score
+    // Remove the ORDER BY clause that uses node_ucb1_score.
     $orderby = &$cloned_query->getOrderBy();
     foreach ($orderby as $key => $order) {
         if (strpos($key, 'node_ucb1_score') !== false) {
@@ -89,18 +88,18 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
         }
     }
 
-    // Add SUM of ai_sorting_trials to the query
+    // Add SUM of ai_sorting_trials to the query.
     $cloned_query->addExpression('SUM(COALESCE(node_counter.ai_sorting_trials, 0))', 'total_ai_sorting_trials');
 
-    // Remove all fields to ensure we're only getting the sum
+    // Remove all fields to ensure we're only getting the sum.
     $fields = &$cloned_query->getFields();
     $fields = [];
 
-    // Log the modified cloned query
+    // Log the modified cloned query.
     $modified_query_string = $cloned_query->__toString();
     \Drupal::logger('ai_sorting')->notice('Q: @query', ['@query' => $modified_query_string]);
 
-    // Execute the cloned query and log the results
+    // Execute the cloned query and log the results.
     try {
       $cloned_result = $cloned_query->execute();
       $cloned_data = $cloned_result->fetchAll(\PDO::FETCH_ASSOC);
@@ -110,17 +109,20 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     catch (\Exception $e) {
       \Drupal::logger('ai_sorting')->error('Error executing Cloned Query: @error', ['@error' => $e->getMessage()]);
     }
-  }
-}
 
-/**
- * Helper function to show the difference between two strings.
- */
-function stringDiff($string1, $string2) {
-  $diff = '';
-  $diff .= "Original: " . $string1 . "\n";
-  $diff .= "Cloned: " . $string2 . "\n";
-  return $diff;
+    // Utilize the TotalTrialsService to manage total trials.
+    /** @var \Drupal\ai_sorting\Service\TotalTrialsService $total_trials_service */
+    $total_trials_service = \Drupal::service('ai_sorting.total_trials_service');
+    $view_id = $view->id();
+    $display_id = $view->current_display;
+    $total_trials = $total_trials_service->incrementTotalTrials($view_id, $display_id);
+
+    \Drupal::logger('ai_sorting')->notice('Total Trials for view @view_id and display @display_id: @total', [
+      '@view_id' => $view_id,
+      '@display_id' => $display_id,
+      '@total' => $total_trials,
+    ]);
+  }
 }
 
 /**

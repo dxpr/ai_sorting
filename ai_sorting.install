@@ -6,28 +6,108 @@
  */
 
 use Drupal\Core\Database\Database;
+use Drupal\Core\Database\SchemaObjectExistsException;
+use Drupal\Core\Database\SchemaObjectDoesNotExistException;
 
 /**
  * Implements hook_install().
  */
 function ai_sorting_install() {
-  $schema = Database::getConnection()->schema();
-  $spec = [
+  $schema = \Drupal::database()->schema();
+
+  // Define the ai_sorting_total_trials table schema.
+  $specTotalTrials = [
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'view_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'display_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'total_trials' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ],
+      'created' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'changed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'view_display_unique' => ['view_id', 'display_id'],
+    ],
+    'indexes' => [
+      'view_id' => ['view_id'],
+      'display_id' => ['display_id'],
+    ],
+  ];
+
+  // Create the table.
+  try {
+    $schema->createTable('ai_sorting_total_trials', $specTotalTrials);
+  }
+  catch (SchemaObjectExistsException $e) {
+    // Table already exists, log the exception.
+    \Drupal::logger('ai_sorting')->notice('Table ai_sorting_total_trials already exists: @message', ['@message' => $e->getMessage()]);
+  }
+
+  // Add the ai_sorting_trials field to the node_counter table.
+  $specNodeTrials = [
     'description' => 'The number of times this node has been shown in AI-sorted views.',
     'type' => 'int',
     'unsigned' => TRUE,
     'not null' => TRUE,
     'default' => 0,
   ];
-  $schema->addField('node_counter', 'ai_sorting_trials', $spec);
+
+  try {
+    $schema->addField('node_counter', 'ai_sorting_trials', $specNodeTrials);
+  }
+  catch (SchemaObjectExistsException $e) {
+    // Field already exists, log the exception.
+    \Drupal::logger('ai_sorting')->notice('Field ai_sorting_trials already exists in node_counter table: @message', ['@message' => $e->getMessage()]);
+  }
 }
 
 /**
  * Implements hook_uninstall().
  */
 function ai_sorting_uninstall() {
-  $schema = Database::getConnection()->schema();
-  if ($schema->fieldExists('node_counter', 'ai_sorting_trials')) {
+  $schema = \Drupal::database()->schema();
+
+  // Drop the ai_sorting_total_trials table if it exists.
+  try {
+    $schema->dropTable('ai_sorting_total_trials');
+  }
+  catch (SchemaObjectDoesNotExistException $e) {
+    // Table doesn't exist, log the exception.
+    \Drupal::logger('ai_sorting')->notice('Table ai_sorting_total_trials does not exist: @message', ['@message' => $e->getMessage()]);
+  }
+
+  // Drop the ai_sorting_trials field from the node_counter table if it exists.
+  try {
     $schema->dropField('node_counter', 'ai_sorting_trials');
+  }
+  catch (SchemaObjectDoesNotExistException $e) {
+    // Field doesn't exist, log the exception.
+    \Drupal::logger('ai_sorting')->notice('Field ai_sorting_trials does not exist in node_counter table: @message', ['@message' => $e->getMessage()]);
   }
 }
