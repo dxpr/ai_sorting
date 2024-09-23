@@ -1,8 +1,3 @@
-Sure, here's an updated version of the `README.md` file with a more comprehensive description of the module, including all the new features:
-
-```markdown:README.md
-# ai_sorting
-
 The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the Upper Confidence Bound (UCB2) algorithm. This module extends the Statistics module to incorporate AI-based sorting functionality, allowing for more dynamic and user-interaction-driven content presentation.
 
 ## Features
