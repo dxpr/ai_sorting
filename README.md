@@ -1,10 +1,10 @@
-The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the Upper Confidence Bound (UCB2) algorithm. This module extends the Statistics module to incorporate AI-based sorting functionality, allowing for more dynamic and user-interaction-driven content presentation.
+The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the Upper Confidence Bound (UCB1) algorithm. This module extends the Statistics module to incorporate AI-based sorting functionality, allowing for more dynamic and user-interaction-driven content presentation.
 
 ## Features
 
 - **Integration with Drupal Views**: Seamlessly integrates with Drupal Views to provide AI-based sorting.
-- **UCB2 Algorithm**: Utilizes the Upper Confidence Bound (UCB2) algorithm to intelligently sort nodes based on user interactions.
-- **Configurable Exploration Parameter**: Allows configuration of the UCB2 algorithm's exploration parameter (`alpha`), controlling the balance between exploring new options and exploiting known successful options.
+- **UCB1 Algorithm**: Utilizes the Upper Confidence Bound (UCB1) algorithm to intelligently sort nodes based on user interactions.
+- **Configurable Exploration Parameter**: Allows configuration of the UCB1 algorithm's exploration parameter (`alpha`), controlling the balance between exploring new options and exploiting known successful options.
 - **Custom Click Tracking**: Provides an option to use custom click tracking for more granular interaction data.
 - **Statistics Module Integration**: Optionally integrates with the built-in Drupal Statistics module for tracking user interactions.
 - **Node Visibility and Interaction Tracking**: Tracks node visibility and interaction counts to optimize sorting over time.

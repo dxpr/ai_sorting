@@ -4,4 +4,4 @@ ai_sorting.settings:
   mapping:
     alpha:
       type: float
-      label: 'Alpha value for UCB2 algorithm'
+      label: 'Alpha value for UCB1 algorithm'

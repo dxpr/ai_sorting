@@ -18,7 +18,7 @@ function ai_sorting_help($route_name, RouteMatchInterface $route_match) {
     case 'help.page.ai_sorting':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the UCB2 algorithm.') . '</p>';
+      $output .= '<p>' . t('The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the UCB1 algorithm.') . '</p>';
       return $output;
   }
 }
