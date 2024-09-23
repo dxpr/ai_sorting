@@ -34,36 +34,34 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   }
 
   // Proceed with AI sorting logic.
-  if (!empty($view->style_plugin) && $view->style_plugin->usesFields()) {
-    $nids = [];
-    $nid_url_map = [];
-    foreach ($view->result as $row) {
-      if (isset($row->nid)) {
-        $nids[] = $row->nid;
-        $nid_url_map[$row->nid] = Url::fromRoute('entity.node.canonical', ['node' => $row->nid])->toString();
-      }
+  $nids = [];
+  $nid_url_map = [];
+  foreach ($view->result as $row) {
+    if (isset($row->nid)) {
+      $nids[] = $row->nid;
+      $nid_url_map[$row->nid] = Url::fromRoute('entity.node.canonical', ['node' => $row->nid])->toString();
     }
-    
-    if (!empty($nids)) {
-      $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_increment';
-      $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
-        'nids' => $nids,
-        'nidUrlMap' => $nid_url_map,
-        'incrementTrialsUrl' => Url::fromRoute('ai_sorting.increment_trials')->toString(),
-      ];
+  }
 
-      // Retrieve the tracking method from the sorts structure.
-      if (isset($sorts['ai_sorting']['tracking_method'])) {
-        $tracking_method = $sorts['ai_sorting']['tracking_method'];
-      } else {
-        $tracking_method = NULL;
-      }
+  if (!empty($nids)) {
+    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_increment';
+    $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
+      'nids' => $nids,
+      'nidUrlMap' => $nid_url_map,
+      'incrementTrialsUrl' => Url::fromRoute('ai_sorting.increment_trials')->toString(),
+    ];
 
-      if ($tracking_method === 'custom') {
-        $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_click_tracking';
-        $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['clickTrackingUrl'] = Url::fromRoute('ai_sorting.track_click')->toString();
-        $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['displayId'] = $view->current_display;
-      }
+    // Retrieve the tracking method from the sorts structure.
+    if (isset($sorts['ai_sorting']['tracking_method'])) {
+      $tracking_method = $sorts['ai_sorting']['tracking_method'];
+    } else {
+      $tracking_method = NULL;
+    }
+
+    if ($tracking_method === 'custom') {
+      $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_click_tracking';
+      $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['clickTrackingUrl'] = Url::fromRoute('ai_sorting.track_click')->toString();
+      $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['displayId'] = $view->current_display;
     }
   }
 

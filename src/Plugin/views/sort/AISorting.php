@@ -61,7 +61,7 @@ class AISorting extends SortPluginBase {
   protected function defineOptions() {
     $options = parent::defineOptions();
     $options['alpha'] = ['default' => 2];
-    unset($options['order']);
+    $options['order'] = ['default' => '']; // We dont use, but unsetting results in adminSummary warning.
     return $options;
   }
 
@@ -176,6 +176,28 @@ class AISorting extends SortPluginBase {
 
     // Clear any caches if necessary
     \Drupal::service('plugin.manager.views.sort')->clearCachedDefinitions();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function adminSummary() {
+    $summary = [];
+
+    // Add alpha to the summary.
+    $summary[] = $this->t('Alpha: @alpha', ['@alpha' => $this->options['alpha']]);
+
+    // Add tracking method to the summary.
+    if (isset($this->options['tracking_method'])) {
+      $summary[] = $this->t('Tracking method: @method', ['@method' => $this->options['tracking_method']]);
+    }
+
+    // Handle the 'order' key gracefully.
+    if (isset($this->options['order']) && $this->options['order'] !== '') {
+      $summary[] = $this->t('Order: @order', ['@order' => $this->options['order']]);
+    }
+
+    return implode(', ', $summary);
   }
 
 }
