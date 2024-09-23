@@ -27,59 +27,73 @@ function ai_sorting_help($route_name, RouteMatchInterface $route_match) {
  * Implements hook_views_pre_render().
  */
 function ai_sorting_views_pre_render(ViewExecutable $view) {
-  // Check if the view query is an instance of Sql.
-  if (!($view->query instanceof Sql)) {
-    return;
-  }
-
-  // Check if the query contains 'node_ucb1_score'.
-  $query_string = $view->build_info['query']->__toString();
-  if (strpos($query_string, 'node_ucb1_score') === FALSE) {
+  // Check if the view uses the 'ai_sorting' sort plugin.
+  $sorts = $view->display_handler->getOption('sorts');
+  if (!isset($sorts['ai_sorting'])) {
     return;
   }
 
   // Proceed with AI sorting logic.
   if (!empty($view->style_plugin) && $view->style_plugin->usesFields()) {
     $nids = [];
+    $nid_url_map = [];
     foreach ($view->result as $row) {
       if (isset($row->nid)) {
         $nids[] = $row->nid;
+        $nid_url_map[$row->nid] = Url::fromRoute('entity.node.canonical', ['node' => $row->nid])->toString();
       }
     }
     
     if (!empty($nids)) {
-      $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting';
+      $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_increment';
       $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
         'nids' => $nids,
+        'nidUrlMap' => $nid_url_map,
         'incrementTrialsUrl' => Url::fromRoute('ai_sorting.increment_trials')->toString(),
       ];
+
+      // Retrieve the tracking method from the sorts structure.
+      \Drupal::logger('ai_sorting')->notice('Sorts structure for view @view_id: @sorts', [
+        '@view_id' => $view->id(),
+        '@sorts' => print_r($sorts, TRUE),
+      ]);
+      if (isset($sorts['ai_sorting']['tracking_method'])) {
+        $tracking_method = $sorts['ai_sorting']['tracking_method'];
+        \Drupal::logger('ai_sorting')->notice('Retrieved tracking method from sorts structure for view @view_id: @tracking_method', [
+          '@view_id' => $view->id(),
+          '@tracking_method' => $tracking_method,
+        ]);
+      } else {
+        \Drupal::logger('ai_sorting')->notice('Tracking method not found in sorts structure for view @view_id', ['@view_id' => $view->id()]);
+      }
+
+      if ($tracking_method === 'custom') {
+        \Drupal::logger('ai_sorting')->notice('Tracking method is custom for view @view_id', ['@view_id' => $view->id()]);
+        \Drupal::logger('ai_sorting')->notice('Attaching ai_sorting/ai_sorting_click_tracking library');
+        $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_click_tracking';
+        $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['clickTrackingUrl'] = Url::fromRoute('ai_sorting.track_click')->toString();
+        $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['displayId'] = $view->current_display;
+        \Drupal::logger('ai_sorting')->notice('Attached clickTrackingUrl: @url', ['@url' => Url::fromRoute('ai_sorting.track_click')->toString()]);
+      } else {
+        \Drupal::logger('ai_sorting')->notice('Tracking method is not custom for view @view_id', ['@view_id' => $view->id()]);
+      }
+    } else {
+      \Drupal::logger('ai_sorting')->notice('No NIDs found for view @view_id', ['@view_id' => $view->id()]);
     }
-
-    // Log the original query.
-    \Drupal::logger('ai_sorting')->notice('Q: @query', ['@query' => $query_string]);
-
-    // Execute the original query and log the results.
-    try {
-      $original_result = $view->build_info['query']->execute();
-      $original_data = $original_result->fetchAll(\PDO::FETCH_ASSOC);
-      $result_string = print_r($original_data, TRUE);
-      \Drupal::logger('ai_sorting')->notice('O: @results', ['@results' => $result_string]);
-    }
-    catch (\Exception $e) {
-      \Drupal::logger('ai_sorting')->error('Error executing Original Query: @error', ['@error' => $e->getMessage()]);
-    }
-
-    // Utilize the TotalTrialsService to calculate and update total trials.
-    /** @var \Drupal\ai_sorting\Service\TotalTrialsService $total_trials_service */
-    $total_trials_service = \Drupal::service('ai_sorting.total_trials_service');
-    $total_trials = $total_trials_service->calculateAndUpdateTotalTrials($view);
-
-    \Drupal::logger('ai_sorting')->notice('Total Trials for view @view_id and display @display_id: @total', [
-      '@view_id' => $view->id(),
-      '@display_id' => $view->current_display,
-      '@total' => $total_trials,
-    ]);
+  } else {
+    \Drupal::logger('ai_sorting')->notice('View @view_id does not use fields or style plugin is empty', ['@view_id' => $view->id()]);
   }
+
+  // Utilize the TotalTrialsService to calculate and update total trials.
+  /** @var \Drupal\ai_sorting\Service\TotalTrialsService $total_trials_service */
+  $total_trials_service = \Drupal::service('ai_sorting.total_trials_service');
+  $total_trials = $total_trials_service->calculateAndUpdateTotalTrials($view);
+
+  \Drupal::logger('ai_sorting')->notice('Total Trials for view @view_id and display @display_id: @total', [
+    '@view_id' => $view->id(),
+    '@display_id' => $view->current_display,
+    '@total' => $total_trials,
+  ]);
 }
 
 /**

@@ -5,3 +5,21 @@ ai_sorting:
     - core/drupal
     - core/once
     - core/drupalSettings
+
+ai_sorting_increment:
+  version: 1.x
+  js:
+    js/ai-sorting-increment.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings
+
+ai_sorting_click_tracking:
+  version: 1.x
+  js:
+    js/ai-sorting-click-tracking.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings

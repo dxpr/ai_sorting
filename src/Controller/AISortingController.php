@@ -37,4 +37,40 @@ class AISortingController extends ControllerBase {
 
     return new JsonResponse(['success' => TRUE]);
   }
+
+  /**
+   * Tracks clicks for specified nodes.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The current request.
+   *
+   * @return \Symfony\Component\HttpFoundation\JsonResponse
+   *   A JSON response indicating success or failure.
+   */
+  public function trackClick(Request $request) {
+    $data = json_decode($request->getContent(), TRUE);
+    \Drupal::logger('ai_sorting')->notice('Received data: @data', ['@data' => print_r($data, TRUE)]);
+
+    $nid = $data['nid'] ?? NULL;
+    $view_id = $data['view_id'] ?? NULL;
+    $display_id = $data['display_id'] ?? NULL;
+
+    if (empty($nid) || empty($view_id) || empty($display_id)) {
+      \Drupal::logger('ai_sorting')->error('Invalid input: nid=@nid, view_id=@view_id, display_id=@display_id', [
+        '@nid' => $nid,
+        '@view_id' => $view_id,
+        '@display_id' => $display_id,
+      ]);
+      return new JsonResponse(['error' => 'Invalid input'], 400);
+    }
+
+    $database = \Drupal::database();
+    $database->merge('ai_sorting_clicks')
+      ->key(['nid' => $nid, 'view_id' => $view_id, 'display_id' => $display_id])
+      ->fields(['clicks' => 1])
+      ->expression('clicks', 'clicks + :inc', [':inc' => 1])
+      ->execute();
+
+    return new JsonResponse(['success' => TRUE]);
+  }
 }

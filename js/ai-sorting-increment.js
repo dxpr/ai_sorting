@@ -1,18 +1,16 @@
 (function (Drupal, once) {
   'use strict';
 
-  Drupal.behaviors.aiSorting = {
+  Drupal.behaviors.aiSortingIncrement = {
     attach: function (context, settings) {
-      console.log('AI Sorting behavior attached');
+      console.log('AI Sorting Increment behavior attached');
       
-      console.log('AI Sorting settings:', settings.aiSorting);
-
       if (!settings.aiSorting || !settings.aiSorting.views) {
         console.warn('AI Sorting settings are not properly configured');
         return;
       }
 
-      once('ai-sorting', '.view', context).forEach(function(view) {
+      once('ai-sorting-increment', '.view', context).forEach(function(view) {
         console.log('Found view element:', view);
         
         // Extract view ID from class names
@@ -35,34 +33,11 @@
               console.log('IntersectionObserver callback triggered for view:', viewId);
               if (entries[0].isIntersecting) {
                 console.log('View is intersecting, sending request to increment trials');
-                fetch(incrementTrialsUrl, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': settings.aiSorting.csrfToken
-                  },
-                  body: JSON.stringify({nids: nids})
-                })
-                .then(response => {
-                  console.log('Response status:', response.status);
-                  return response.json();
-                })
-                .then(data => {
-                  console.log('Increment trials response:', data);
-                  if (data.success) {
-                    console.log('AI Sorting trials incremented successfully for view:', viewId);
-                  } else {
-                    console.error('Failed to increment AI Sorting trials:', data.error);
-                  }
-                })
-                .catch(error => {
-                  console.error('Error in AI Sorting increment request:', error);
-                });
+                navigator.sendBeacon(incrementTrialsUrl, JSON.stringify({nids: nids}));
                 console.log('Unobserving view after increment request');
                 observer.unobserve(view);
               }
             }, {threshold: 0.1});
-
             console.log('Starting observation of view:', viewId);
             observer.observe(view);
           } else {

@@ -5,3 +5,11 @@ ai_sorting.increment_trials:
   requirements:
     _permission: 'access content'
   methods: [POST]
+
+ai_sorting.track_click:
+  path: '/ai-sorting/track-click'
+  defaults:
+    _controller: '\Drupal\ai_sorting\Controller\AISortingController::trackClick'
+  requirements:
+    _permission: 'access content'
+  methods: [POST]

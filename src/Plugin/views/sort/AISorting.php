@@ -61,7 +61,6 @@ class AISorting extends SortPluginBase {
   protected function defineOptions() {
     $options = parent::defineOptions();
     $options['alpha'] = ['default' => 2];
-    // Remove the 'order' option
     unset($options['order']);
     return $options;
   }
@@ -150,6 +149,17 @@ class AISorting extends SortPluginBase {
       '#field_suffix' => $this->t('(0.0 to 10.0)'),
       '#required' => TRUE,
     ];
+
+    $form['ucb1_settings']['tracking_method'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Tracking Method'),
+      '#options' => [
+        'statistics' => $this->t('Statistics Module'),
+        'custom' => $this->t('Custom Click Tracking'),
+      ],
+      '#default_value' => $this->options['tracking_method'] ?? 'statistics',
+      '#description' => $this->t('Select the method to track user interactions. The "Statistics Module" uses the built-in Drupal statistics module, while "Custom Click Tracking" uses a custom implementation to track clicks.'),
+    ];
   }
 
   /**
@@ -163,6 +173,11 @@ class AISorting extends SortPluginBase {
     // Save the alpha value
     if (isset($options['ucb1_settings']['alpha'])) {
       $this->options['alpha'] = $options['ucb1_settings']['alpha'];
+    }
+
+    // Save the tracking method
+    if (isset($options['tracking_method'])) {
+      $this->options['tracking_method'] = $options['tracking_method'];
     }
 
     // If you have other options, save them here

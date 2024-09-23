@@ -39,16 +39,6 @@ function ai_sorting_install() {
         'not null' => TRUE,
         'default' => 0,
       ],
-      'created' => [
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ],
-      'changed' => [
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ],
     ],
     'primary key' => ['id'],
     'unique keys' => [
@@ -85,6 +75,52 @@ function ai_sorting_install() {
     // Field already exists, log the exception.
     \Drupal::logger('ai_sorting')->notice('Field ai_sorting_trials already exists in node_counter table: @message', ['@message' => $e->getMessage()]);
   }
+
+  // Define the ai_sorting_clicks table schema.
+  $specClicks = [
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'nid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'view_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'display_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'clicks' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'nid' => ['nid'],
+      'view_display' => ['view_id', 'display_id'],
+    ],
+  ];
+
+  // Create the ai_sorting_clicks table.
+  try {
+    $schema->createTable('ai_sorting_clicks', $specClicks);
+  }
+  catch (SchemaObjectExistsException $e) {
+    // Table already exists, log the exception.
+    \Drupal::logger('ai_sorting')->notice('Table ai_sorting_clicks already exists: @message', ['@message' => $e->getMessage()]);
+  }
 }
 
 /**
@@ -110,4 +146,46 @@ function ai_sorting_uninstall() {
     // Field doesn't exist, log the exception.
     \Drupal::logger('ai_sorting')->notice('Field ai_sorting_trials does not exist in node_counter table: @message', ['@message' => $e->getMessage()]);
   }
+}
+
+/**
+ * Implements hook_schema().
+ */
+function ai_sorting_schema() {
+  $schema['ai_sorting_total_trials'] = [
+    'description' => 'Stores total trials for AI Sorting.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'view_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'display_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'total_trials' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'view_display_unique' => ['view_id', 'display_id'],
+    ],
+    'indexes' => [
+      'view_id' => ['view_id'],
+      'display_id' => ['display_id'],
+    ],
+  ];
+
+  return $schema;
 }

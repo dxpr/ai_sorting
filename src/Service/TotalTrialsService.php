@@ -74,7 +74,7 @@ class TotalTrialsService {
 
     if ($existing !== NULL) {
       $this->database->update('ai_sorting_total_trials')
-        ->fields(['total_trials' => $total_trials, 'changed' => REQUEST_TIME])
+        ->fields(['total_trials' => $total_trials])
         ->condition('view_id', $view_id)
         ->condition('display_id', $display_id)
         ->execute();
@@ -85,8 +85,6 @@ class TotalTrialsService {
           'view_id' => $view_id,
           'display_id' => $display_id,
           'total_trials' => $total_trials,
-          'created' => REQUEST_TIME,
-          'changed' => REQUEST_TIME,
         ])
         ->execute();
     }
@@ -108,7 +106,7 @@ class TotalTrialsService {
   public function incrementTotalTrials(string $view_id, string $display_id, int $increment = 1): int {
     $this->database->merge('ai_sorting_total_trials')
       ->key(['view_id' => $view_id, 'display_id' => $display_id])
-      ->fields(['total_trials' => $increment, 'created' => REQUEST_TIME, 'changed' => REQUEST_TIME])
+      ->fields(['total_trials' => $increment])
       ->expression('total_trials', 'total_trials + :inc', [':inc' => $increment])
       ->execute();
 
@@ -163,7 +161,6 @@ class TotalTrialsService {
         ->key(['view_id' => $view_id, 'display_id' => $display_id])
         ->fields([
           'total_trials' => $total_trials,
-          'changed' => \Drupal::time()->getRequestTime(),
         ])
         ->execute();
 
