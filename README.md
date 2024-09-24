@@ -125,7 +125,7 @@ To remove any doubt about the module's scalability, we conducted extensive stres
 
 Our SQL-based AI sort handles even large datasets efficiently, though it naturally takes a bit more time compared to the simpler "Sort by ID" method. These results demonstrate that our solution can scale well, even when sorting 100,000 nodes.
 
-That said, we recommend enabling caching in production environments. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is optimal. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time will downregulate the exploration aspect of the algorithm, which benefits from up-to-date data.
+That said, we recommend enabling caching in production environments. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time will downregulate the exploration aspect of the algorithm, which benefits from up-to-date data.
 
 ## ELI doctorate in computer science
 The AI Sorting module implements a Bayesian-inspired approach to content sorting using the Upper Confidence Bound (UCB1) algorithm, a well-established method in the field of reinforcement learning. The module tracks user interactions to estimate the expected reward $\mu_i$ of displaying each piece of content $i$. The UCB1 algorithm selects the content $i$ that maximizes the upper confidence bound:

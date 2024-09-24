@@ -138,41 +138,34 @@ class AISorting extends SortPluginBase {
     // Retrieve existing Cache-Control header if any.
     $existing_cache_control = $request->headers->get('Cache-Control', '');
 
-    // Parse existing directives.
-    $directives = [];
-    if (!empty($existing_cache_control)) {
-      $parts = explode(',', $existing_cache_control);
-      foreach ($parts as $part) {
-        $part = trim($part);
-        if (strpos($part, '=') !== FALSE) {
-          list($key, $value) = explode('=', $part, 2);
-          $directives[strtolower($key)] = $value;
-        }
-        else {
-          $directives[strtolower($part)] = TRUE;
-        }
-      }
+    // Regex to find max-age and s-maxage values.
+    $max_age_regex = '/max-age=(\d+)/';
+    $s_maxage_regex = '/s-maxage=(\d+)/';
+
+    // Function to replace the age value if it's higher than the new max_age.
+    $replace_age = function ($matches) use ($max_age) {
+      $current_age = (int) $matches[1];
+      return $current_age > $max_age ? $matches[0] : str_replace($matches[1], $max_age, $matches[0]);
+    };
+
+    // Check and replace max-age.
+    if (preg_match($max_age_regex, $existing_cache_control)) {
+      $existing_cache_control = preg_replace_callback($max_age_regex, $replace_age, $existing_cache_control);
     }
 
-    // Update or add max-age and s-maxage.
-    $directives['max-age'] = $max_age;
-    $directives['s-maxage'] = $max_age;
-
-    // Reconstruct the Cache-Control header.
-    $new_cache_control = [];
-    foreach ($directives as $key => $value) {
-      if (is_bool($value)) {
-        $new_cache_control[] = $key;
-      }
-      else {
-        $new_cache_control[] = $key . '=' . $value;
-      }
+    // Check and replace s-maxage.
+    if (preg_match($s_maxage_regex, $existing_cache_control)) {
+      $existing_cache_control = preg_replace_callback($s_maxage_regex, $replace_age, $existing_cache_control);
     }
-    $new_cache_control_header = implode(', ', $new_cache_control);
+
+    // If neither max-age nor s-maxage is present, do nothing.
+    if (!preg_match($max_age_regex, $existing_cache_control) && !preg_match($s_maxage_regex, $existing_cache_control)) {
+      return;
+    }
 
     // Set the updated Cache-Control header.
     $response = new Response();
-    $response->headers->set('Cache-Control', $new_cache_control_header);
+    $response->headers->set('Cache-Control', $existing_cache_control);
     $response->prepare($request);
     $response->send();
   }
@@ -245,7 +238,7 @@ class AISorting extends SortPluginBase {
         300 => $this->t('5 minutes'),
         600 => $this->t('10 minutes'),
       ],
-      '#description' => $this->t('This is used as the value for max-age in Cache-Control headers. Note: This setting overrides the page cache time and is specific to the AI sorting algorithm. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is optimal. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect the exploration aspect of the algorithm, which benefits from up-to-date data.'),
+      '#description' => $this->t('This is used as the value for max-age in Cache-Control headers. Note: This setting overrides the page cache time and is specific to the AI sorting algorithm. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect the exploration aspect of the algorithm, which benefits from up-to-date data.'),
       '#required' => TRUE,
     ];
   }
