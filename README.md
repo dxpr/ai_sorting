@@ -69,9 +69,9 @@ The AI Sorting module uses a smart algorithm called Upper Confidence Bound (UCB1
 
 ## Custom click tracking vs. statistics module tracking
 
-### Custom click tracking
+### Views-display-specific click tracking
 
-**Custom Click Tracking** monitors clicks **only from the specific Views display** using AI Sort. It captures precise user interactions within that view, enabling real-time content optimization and personalization.
+**Views-Display-Specific Click Tracking** monitors clicks **only from the specific Views display** using AI Sort. It captures precise user interactions within that view, enabling real-time content optimization and personalization.
 
 **Advantages:**
 

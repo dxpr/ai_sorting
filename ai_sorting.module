@@ -58,7 +58,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       $tracking_method = NULL;
     }
 
-    if ($tracking_method === 'custom') {
+    if ($tracking_method === 'views_display_specific') {
       $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_click_tracking';
       $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['clickTrackingUrl'] = Url::fromRoute('ai_sorting.track_click')->toString();
       $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['displayId'] = $view->current_display;

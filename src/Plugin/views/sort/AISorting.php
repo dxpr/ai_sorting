@@ -204,11 +204,11 @@ class AISorting extends SortPluginBase {
       '#type' => 'select',
       '#title' => $this->t('Tracking Method'),
       '#options' => [
+        'views_display_specific' => $this->t('Views-Display-Specific Click Tracking'),
         'statistics' => $this->t('Statistics Module'),
-        'custom' => $this->t('Custom Click Tracking'),
       ],
-      '#default_value' => $this->options['tracking_method'] ?? 'custom',
-      '#description' => $this->t('Select the method to track user interactions. The "Statistics Module" uses the built-in Drupal statistics module, while "Custom Click Tracking" uses a custom implementation to track clicks.'),
+      '#default_value' => $this->options['tracking_method'] ?? 'views_display_specific',
+      '#description' => $this->t('Select the method to track user interactions. The "Statistics Module" uses the built-in Drupal statistics module, while "Views-Display-Specific Click Tracking" captures precise user interactions within the specific Views display.'),
     ];
 
     // Add an advanced details element for alpha and cache settings.
