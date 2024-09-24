@@ -151,10 +151,6 @@ $$
 
 where $\mu^*$ is the expected reward of the optimal content, and $\mu_{i_t}$ is the expected reward of the content selected at time $t$.
 
-The module also supports other algorithms such as UCB2, epsilon-greedy, and Thompson sampling, each providing different strategies for balancing exploration and exploitation. UCB2 refines the exploration-exploitation balance by adjusting the confidence bounds, epsilon-greedy selects the best-known option most of the time but explores randomly with probability $\epsilon$, and Thompson sampling uses Bayesian inference to update the probability distribution of rewards and select content based on the posterior distribution.
-
-By leveraging these algorithms, the AI Sorting module aims to optimize content presentation dynamically, ensuring that user interactions are maximized while continually improving the content selection process based on real-time feedback. This regret-minimization strategy is crucial for maintaining high user engagement and satisfaction over time.
-
 ## References
 
 - [On Upper-Confidence Bound Policies for Switching Bandit Problems](https://www.researchgate.net/publication/221393905_On_Upper-Confidence_Bound_Policies_for_Switching_Bandit_Problems)
