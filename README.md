@@ -1,5 +1,13 @@
 The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the Upper Confidence Bound (UCB1) algorithm. This module extends the Statistics module to incorporate AI-based sorting functionality, allowing for more dynamic and user-interaction-driven content presentation.
 
+## How does it work?
+
+### ELI5 (Explain like I'm five)
+Imagine you have a big jar of different candies, and you want to find out which candy you like the most. You start by trying each type of candy a little bit to see which one is the yummiest. Over time, you eat more of the candies you like the most but still try new ones occasionally to make sure you haven't missed a better candy. This is what our AI Sorting module does with the content on your website. It tries to show the most interesting content to users based on what they have clicked on before.
+
+### ELI High School Graduate
+The AI Sorting module uses a smart algorithm called Upper Confidence Bound (UCB1) to sort content in Drupal Views. It tracks how often users interact with different pieces of content and uses this data to decide which content to show more often. The goal is to balance between showing content that has been popular (exploitation) and trying out new content to see if it might be even better (exploration). This approach is inspired by Bayesian methods and aims to minimize regret, which means it tries to make the best possible decisions based on the information it has.
+
 ## Features
 
 - **Integration with Drupal Views**: Seamlessly integrates with Drupal Views to provide AI-based sorting.
@@ -105,13 +113,7 @@ Our SQL-based AI sort handles even large datasets efficiently, though it natural
 
 That said, we recommend enabling caching in production environments. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is optimal. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect the exploration aspect of the algorithm, which benefits from up-to-date data.
 
-## How does it work?
-
-### ELI5 (Explain like I'm five)
-Imagine you have a big jar of different candies, and you want to find out which candy you like the most. You start by trying each type of candy a little bit to see which one is the yummiest. Over time, you eat more of the candies you like the most but still try new ones occasionally to make sure you haven't missed a better candy. This is what our AI Sorting module does with the content on your website. It tries to show the most interesting content to users based on what they have clicked on before.
-
-### ELI High School Graduate
-The AI Sorting module uses a smart algorithm called Upper Confidence Bound (UCB1) to sort content in Drupal Views. It tracks how often users interact with different pieces of content and uses this data to decide which content to show more often. The goal is to balance between showing content that has been popular (exploitation) and trying out new content to see if it might be even better (exploration). This approach is inspired by Bayesian methods and aims to minimize regret, which means it tries to make the best possible decisions based on the information it has.
+## How does it work? (continued)
 
 ### ELI Doctorate in Computer Science
 The AI Sorting module implements a Bayesian-inspired approach to content sorting using the Upper Confidence Bound (UCB1) algorithm, a well-established method in the field of reinforcement learning. The module tracks user interactions to estimate the expected reward $\mu_i$ of displaying each piece of content $i$. The UCB1 algorithm selects the content $i$ that maximizes the upper confidence bound:
