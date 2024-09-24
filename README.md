@@ -154,4 +154,4 @@ where $\mu^*$ is the expected reward of the optimal content, and $\mu_{i_t}$ is 
 ## References
 
 - [On Upper-Confidence Bound Policies for Switching Bandit Problems](https://www.researchgate.net/publication/221393905_On_Upper-Confidence_Bound_Policies_for_Switching_Bandit_Problems)
-- [Thompson Sampling for Contextual Bandits with Linear Payoffs](https://ieeexplore.ieee.org/abstract/document/6633613)
+- [Bandits all the way down: UCB1 as a simulation policy in Monte Carlo Tree Search](https://www.researchgate.net/publication/261452207_Bandits_all_the_way_down_UCB1_as_a_simulation_policy_in_Monte_Carlo_Tree_Search)
