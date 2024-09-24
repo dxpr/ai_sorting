@@ -11,6 +11,8 @@ use Drupal\Core\Url;
 use Drupal\ai_sorting\Service\TotalTrialsService;
 use Drupal\views\ViewsHandler;
 use Drupal\Core\Link;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * AI-based sorting plugin for Views.
@@ -27,6 +29,13 @@ class AISorting extends SortPluginBase {
   protected $totalTrialsService;
 
   /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected $requestStack;
+
+  /**
    * Constructs a new AISorting object.
    *
    * @param array $configuration
@@ -37,10 +46,13 @@ class AISorting extends SortPluginBase {
    *   The plugin implementation definition.
    * @param \Drupal\ai_sorting\Service\TotalTrialsService $total_trials_service
    *   The TotalTrialsService.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, TotalTrialsService $total_trials_service) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, TotalTrialsService $total_trials_service, RequestStack $request_stack) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->totalTrialsService = $total_trials_service;
+    $this->requestStack = $request_stack;
   }
 
   /**
@@ -51,7 +63,8 @@ class AISorting extends SortPluginBase {
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('ai_sorting.total_trials_service')
+      $container->get('ai_sorting.total_trials_service'),
+      $container->get('request_stack')
     );
   }
 
@@ -62,6 +75,9 @@ class AISorting extends SortPluginBase {
     $options = parent::defineOptions();
     $options['alpha'] = ['default' => 2];
     $options['order'] = ['default' => '']; // We dont use, but unsetting results in adminSummary warning.
+
+    // Add cache_max_age option with a default value.
+    $options['cache_max_age'] = ['default' => 60]; // Default max-age set to 60 seconds.
     return $options;
   }
 
@@ -81,7 +97,7 @@ class AISorting extends SortPluginBase {
 
     // Construct the UCB1 formula within the ORDER BY clause.
     $ucb1Formula = "(COALESCE(node_counter.totalcount, 0) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
-                  "SQRT(($alpha * LN($totalTrials)) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
+                  "SQRT((" . $alpha . " * LN(" . $totalTrials . ")) / GREATEST(COALESCE(node_counter.ai_sorting_trials, 1), 1)) + " .
                   "(RAND() * 0.000001)";
 
     // Always use DESC order for UCB1 scores.
@@ -101,6 +117,64 @@ class AISorting extends SortPluginBase {
       'type' => 'LEFT',
     ]);
     $this->query->addRelationship('node_counter', $join, 'node_field_data');
+
+    // Set the cache-control header.
+    $this->setCacheControlHeader();
+  }
+
+  /**
+   * Sets the cache-control header with configurable max-age and s-maxage.
+   */
+  protected function setCacheControlHeader() {
+    $request = $this->requestStack->getCurrentRequest();
+    if ($request && $request->headers->has('X-Drupal-Cache')) {
+      // This is an internal subrequest, so we shouldn't modify the headers.
+      return;
+    }
+
+    // Retrieve the configured max-age.
+    $max_age = isset($this->options['cache_max_age']) ? (int) $this->options['cache_max_age'] : 60;
+
+    // Retrieve existing Cache-Control header if any.
+    $existing_cache_control = $request->headers->get('Cache-Control', '');
+
+    // Parse existing directives.
+    $directives = [];
+    if (!empty($existing_cache_control)) {
+      $parts = explode(',', $existing_cache_control);
+      foreach ($parts as $part) {
+        $part = trim($part);
+        if (strpos($part, '=') !== FALSE) {
+          list($key, $value) = explode('=', $part, 2);
+          $directives[strtolower($key)] = $value;
+        }
+        else {
+          $directives[strtolower($part)] = TRUE;
+        }
+      }
+    }
+
+    // Update or add max-age and s-maxage.
+    $directives['max-age'] = $max_age;
+    $directives['s-maxage'] = $max_age;
+
+    // Reconstruct the Cache-Control header.
+    $new_cache_control = [];
+    foreach ($directives as $key => $value) {
+      if (is_bool($value)) {
+        $new_cache_control[] = $key;
+      }
+      else {
+        $new_cache_control[] = $key . '=' . $value;
+      }
+    }
+    $new_cache_control_header = implode(', ', $new_cache_control);
+
+    // Set the updated Cache-Control header.
+    $response = new Response();
+    $response->headers->set('Cache-Control', $new_cache_control_header);
+    $response->prepare($request);
+    $response->send();
   }
 
   /**
@@ -113,8 +187,9 @@ class AISorting extends SortPluginBase {
     unset($form['order']);
 
     $form['ucb1_settings'] = [
-      '#type' => 'fieldset',
+      '#type' => 'details',
       '#title' => $this->t('AI Sorting Settings'),
+      '#open' => TRUE,
     ];
 
     $url = Url::fromUri('https://medium.com/analytics-vidhya/multi-armed-bandit-analysis-of-upper-confidence-bound-algorithm-4b84be516047', [
@@ -125,7 +200,25 @@ class AISorting extends SortPluginBase {
     ]);
     $link = Link::fromTextAndUrl($this->t('Learn more about the UCB algorithm'), $url);
 
-    $form['ucb1_settings']['alpha'] = [
+    $form['ucb1_settings']['tracking_method'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Tracking Method'),
+      '#options' => [
+        'statistics' => $this->t('Statistics Module'),
+        'custom' => $this->t('Custom Click Tracking'),
+      ],
+      '#default_value' => $this->options['tracking_method'] ?? 'custom',
+      '#description' => $this->t('Select the method to track user interactions. The "Statistics Module" uses the built-in Drupal statistics module, while "Custom Click Tracking" uses a custom implementation to track clicks.'),
+    ];
+
+    // Add an advanced details element for alpha and cache settings.
+    $form['ucb1_settings']['advanced'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Advanced Settings'),
+      '#open' => FALSE, // Ensure the details element is collapsed by default.
+    ];
+
+    $form['ucb1_settings']['advanced']['alpha'] = [
       '#type' => 'number',
       '#title' => $this->t('Exploration-Exploitation Balance'),
       '#default_value' => $this->options['alpha'],
@@ -140,15 +233,20 @@ class AISorting extends SortPluginBase {
       '#required' => TRUE,
     ];
 
-    $form['ucb1_settings']['tracking_method'] = [
+    $form['ucb1_settings']['advanced']['cache_max_age'] = [
       '#type' => 'select',
-      '#title' => $this->t('Tracking Method'),
+      '#title' => $this->t('Browser and proxy cache maximum age'),
+      '#default_value' => $this->options['cache_max_age'],
       '#options' => [
-        'statistics' => $this->t('Statistics Module'),
-        'custom' => $this->t('Custom Click Tracking'),
+        0 => $this->t('Never cache'),
+        30 => $this->t('30 seconds'),
+        60 => $this->t('1 minute'),
+        120 => $this->t('2 minutes'),
+        300 => $this->t('5 minutes'),
+        600 => $this->t('10 minutes'),
       ],
-      '#default_value' => $this->options['tracking_method'] ?? 'statistics',
-      '#description' => $this->t('Select the method to track user interactions. The "Statistics Module" uses the built-in Drupal statistics module, while "Custom Click Tracking" uses a custom implementation to track clicks.'),
+      '#description' => $this->t('This is used as the value for max-age in Cache-Control headers. Note: This setting overrides the page cache time and is specific to the AI sorting algorithm. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is optimal. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect the exploration aspect of the algorithm, which benefits from up-to-date data.'),
+      '#required' => TRUE,
     ];
   }
 
@@ -161,18 +259,19 @@ class AISorting extends SortPluginBase {
     $options = &$form_state->getValue('options');
 
     // Save the alpha value
-    if (isset($options['ucb1_settings']['alpha'])) {
-      $this->options['alpha'] = $options['ucb1_settings']['alpha'];
+    if (isset($options['ucb1_settings']['advanced']['alpha'])) {
+      $this->options['alpha'] = $options['ucb1_settings']['advanced']['alpha'];
     }
 
     // Save the tracking method
-    if (isset($options['tracking_method'])) {
-      $this->options['tracking_method'] = $options['tracking_method'];
+    if (isset($options['ucb1_settings']['tracking_method'])) {
+      $this->options['tracking_method'] = $options['ucb1_settings']['tracking_method'];
     }
 
-    // If you have other options, save them here
-    // For example:
-    // $this->options['some_other_option'] = $options['some_other_option'];
+    // Save the cache_max_age value
+    if (isset($options['ucb1_settings']['advanced']['cache_max_age'])) {
+      $this->options['cache_max_age'] = $options['ucb1_settings']['advanced']['cache_max_age'];
+    }
 
     // Clear any caches if necessary
     \Drupal::service('plugin.manager.views.sort')->clearCachedDefinitions();
@@ -184,12 +283,17 @@ class AISorting extends SortPluginBase {
   public function adminSummary() {
     $summary = [];
 
-    // Add alpha to the summary.
-    $summary[] = $this->t('Alpha: @alpha', ['@alpha' => $this->options['alpha']]);
-
     // Add tracking method to the summary.
     if (isset($this->options['tracking_method'])) {
       $summary[] = $this->t('Tracking method: @method', ['@method' => $this->options['tracking_method']]);
+    }
+
+    // Add alpha to the summary.
+    $summary[] = $this->t('Alpha: @alpha', ['@alpha' => $this->options['alpha']]);
+
+    // Add cache_max_age to the summary.
+    if (isset($this->options['cache_max_age'])) {
+      $summary[] = $this->t('Cache Max Age: @max_age seconds', ['@max_age' => $this->options['cache_max_age']]);
     }
 
     // Handle the 'order' key gracefully.
