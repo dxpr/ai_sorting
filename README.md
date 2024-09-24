@@ -32,12 +32,11 @@ The AI Sorting module uses a smart algorithm called Upper Confidence Bound (UCB1
 
 ## Features
 
-- **Integration with Drupal Views**: Seamlessly integrates with Drupal Views to provide AI-based sorting.
-- **UCB1 algorithm**: Utilizes the Upper Confidence Bound (UCB1) algorithm to intelligently sort nodes based on user interactions.
-- **Configurable exploration parameter**: Allows configuration of the UCB1 algorithm's exploration parameter (`alpha`), controlling the balance between exploring new options and exploiting known successful options.
-- **Custom click tracking**: Provides an option to use custom click tracking for more granular interaction data.
-- **Statistics module integration**: Optionally integrates with the built-in Drupal Statistics module for tracking user interactions.
-- **Anonymous tracking**: Ensures all tracking is anonymous, enhancing privacy and GDPR compliance.
+- **AI-Powered Sorting**: Leverages the UCB1 algorithm to sort content dynamically based on user interactions.
+- **Views Integration**: Seamlessly integrates with Drupal Views for easy setup and use.
+- **Configurable Exploration**: Adjust the `alpha` parameter to fine-tune the balance between exploring new content and exploiting known popular content.
+- **Multiple Tracking Methods**: Offers custom click tracking for detailed data or uses the Drupal Statistics module for broader insights.
+- **Privacy and Compliance**: All tracking is done anonymously, ensuring user privacy and GDPR compliance.
 
 ## Requirements
 
