@@ -140,6 +140,11 @@ The module also supports other algorithms such as UCB2, epsilon-greedy, and Thom
 
 By leveraging these algorithms, the AI Sorting module aims to optimize content presentation dynamically, ensuring that user interactions are maximized while continually improving the content selection process based on real-time feedback. This regret-minimization strategy is crucial for maintaining high user engagement and satisfaction over time.
 
+#### References
+
+- [On Upper-Confidence Bound Policies for Switching Bandit Problems](https://www.researchgate.net/publication/221393905_On_Upper-Confidence_Bound_Policies_for_Switching_Bandit_Problems)
+- [Thompson Sampling for Contextual Bandits with Linear Payoffs](https://ieeexplore.ieee.org/abstract/document/6633613)
+
 ### Comparison of Algorithms
 
 | Algorithm          | Description                                                                 | Exploration Strategy                          | Exploitation Strategy                          | Complexity          |
