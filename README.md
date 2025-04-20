@@ -20,7 +20,7 @@ The AI Sorting module provides an intelligent sorting mechanism for Drupal Views
 
 ## Summary
 
-The AI Sorting module leverages the UCB1 algorithm to dynamically sort content in Drupal Views based on user interactions. It aims to balance between showing popular content and exploring new content to optimize user engagement. The module is implemented purely in SQL for efficiency and scalability.
+The AI Sorting module leverages the UCB1 algorithm to dynamically sort content in Drupal Views based on user interactions. It aims to balance between showing popular content and exploring new content to optimize user engagement. The algorithm is implemented purely in SQL for efficiency and scalability.
 
 ## How does it work?
 
