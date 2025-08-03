@@ -1,4 +1,3 @@
-administer ai sorting settings:
-  title: 'Administer AI Sorting settings'
-  description: 'Configure the AI Sorting module settings, including the alpha parameter.'
-  restrict access: TRUE
+administer ai sorting:
+  title: 'Administer AI Sorting'
+  description: 'Configure AI sorting parameters in Views'

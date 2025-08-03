@@ -1,8 +1,8 @@
 name: 'AI Sorting'
 type: module
-description: 'Provides an AI-based sorting plugin using the UCB1 algorithm for Drupal Views, extending the Statistics module.'
-core_version_requirement: ^10
+description: 'Provides an AI-based sorting plugin using reinforcement learning for Drupal Views.'
+core_version_requirement: ^10.3 | ^11
 package: Custom
 dependencies:
   - drupal:views
-  - drupal:statistics
+  - rl
