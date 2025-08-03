@@ -142,8 +142,9 @@ class AISorting extends SortPluginBase {
       );
       $logger->debug('Added order by clause');
 
-      // Cache control headers handled by event subscriber
-      $logger->debug('Cache control handled by event subscriber');
+      // Disable dynamic page cache for AI sorting
+      \Drupal::service('page_cache_kill_switch')->trigger();
+      $logger->debug('Marked AI sorting active and disabled caching');
 
     } catch (\Exception $e) {
       $logger->error('Error in AI Sorting query(): @message', ['@message' => $e->getMessage()]);
