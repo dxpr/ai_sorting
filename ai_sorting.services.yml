@@ -1,4 +1,7 @@
 services:
+  ai_sorting.experiment_resolver:
+    class: Drupal\ai_sorting\Service\ExperimentResolver
+
   ai_sorting.total_trials_service:
     class: Drupal\ai_sorting\Service\TotalTrialsService
-    arguments: ['@database', '@date.formatter']
+    arguments: ['@rl.experiment_manager']

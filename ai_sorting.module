@@ -8,7 +8,6 @@
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\views\ViewExecutable;
 use Drupal\Core\Url;
-use Drupal\views\Plugin\views\query\Sql;
 
 /**
  * Implements hook_help().
@@ -18,7 +17,7 @@ function ai_sorting_help($route_name, RouteMatchInterface $route_match) {
     case 'help.page.ai_sorting':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using the UCB1 algorithm.') . '</p>';
+      $output .= '<p>' . t('The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using reinforcement learning algorithms.') . '</p>';
       return $output;
   }
 }
@@ -33,7 +32,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     return;
   }
 
-  // Proceed with AI sorting logic.
+  // Collect node IDs and URLs for JavaScript tracking
   $nids = [];
   $nid_url_map = [];
   foreach ($view->result as $row) {
@@ -44,38 +43,24 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   }
 
   if (!empty($nids)) {
-    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_increment';
+    // Generate experiment UUID from view and display
+    $experiment_uuid = sha1($view->id() . ':' . $view->current_display);
+
+    // Get RL module path for optimized endpoint
+    $rl_path = \Drupal::service('extension.list.module')->getPath('rl');
+    $base_path = \Drupal::request()->getBasePath();
+
+    // Attach JavaScript libraries and settings
+    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_turns';
+    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_rewards';
     $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
+      'experimentUuid' => $experiment_uuid,
       'nids' => $nids,
       'nidUrlMap' => $nid_url_map,
-      'incrementTrialsUrl' => Url::fromRoute('ai_sorting.increment_trials')->toString(),
+      'rlEndpointUrl' => "{$base_path}/{$rl_path}/rl.php",
+      'displayId' => $view->current_display,
     ];
-
-    // Retrieve the tracking method from the sorts structure.
-    if (isset($sorts['ai_sorting']['tracking_method'])) {
-      $tracking_method = $sorts['ai_sorting']['tracking_method'];
-    } else {
-      $tracking_method = NULL;
-    }
-
-    if ($tracking_method === 'views_display_specific') {
-      $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_click_tracking';
-      $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['clickTrackingUrl'] = Url::fromRoute('ai_sorting.track_click')->toString();
-      $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()]['displayId'] = $view->current_display;
-    }
   }
-
-  // Utilize the TotalTrialsService to calculate and update total trials.
-  /** @var \Drupal\ai_sorting\Service\TotalTrialsService $total_trials_service */
-  $total_trials_service = \Drupal::service('ai_sorting.total_trials_service');
-  $total_trials = $total_trials_service->calculateAndUpdateTotalTrials($view);
-}
-
-/**
- * Implements hook_page_attachments().
- */
-function ai_sorting_page_attachments(array &$attachments) {
-  $attachments['#attached']['drupalSettings']['aiSorting']['csrfToken'] = \Drupal::csrfToken()->get('ai_sorting_increment_trials');
 }
 
 /**
@@ -84,7 +69,7 @@ function ai_sorting_page_attachments(array &$attachments) {
 function ai_sorting_views_data_alter(array &$data) {
   $data['node']['ai_sorting'] = [
     'title' => t('AI Sorting'),
-    'help' => t('Sort content using AI-based algorithm.'),
+    'help' => t('Sort content using reinforcement learning algorithm.'),
     'sort' => [
       'id' => 'ai_sorting',
     ],
