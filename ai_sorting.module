@@ -35,16 +35,35 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   // Collect node IDs and URLs for JavaScript tracking
   $nids = [];
   $nid_url_map = [];
-  foreach ($view->result as $row) {
+  
+  foreach ($view->result as $index => $row) {
+    
+    $nid = NULL;
+    
+    // Try different ways to get the node ID
     if (isset($row->nid)) {
-      $nids[] = $row->nid;
-      $nid_url_map[$row->nid] = Url::fromRoute('entity.node.canonical', ['node' => $row->nid])->toString();
+      $nid = $row->nid;
+    } elseif (isset($row->node_field_data_nid)) {
+      $nid = $row->node_field_data_nid;
+    } elseif (isset($row->_entity) && $row->_entity instanceof \Drupal\node\NodeInterface) {
+      $nid = $row->_entity->id();
+    } elseif (isset($row->_object) && method_exists($row->_object, 'id')) {
+      $nid = $row->_object->id();
+    }
+    
+    if ($nid) {
+      $nids[] = $nid;
+      $nid_url_map[$nid] = Url::fromRoute('entity.node.canonical', ['node' => $nid])->toString();
     }
   }
 
   if (!empty($nids)) {
     // Generate experiment UUID from view and display
     $experiment_uuid = sha1($view->id() . ':' . $view->current_display);
+
+    // Register this experiment with the RL module
+    $registration_service = \Drupal::service('ai_sorting.experiment_registration');
+    $registration_service->registerExperiment($experiment_uuid);
 
     // Get RL module path for optimized endpoint
     $rl_path = \Drupal::service('extension.list.module')->getPath('rl');

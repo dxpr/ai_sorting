@@ -18,12 +18,15 @@
           var rlEndpointUrl = viewSettings.rlEndpointUrl;
 
           if (nidUrlMap && Object.keys(nidUrlMap).length > 0) {
-            view.querySelectorAll('a').forEach(function(link) {
+            var links = view.querySelectorAll('a');
+            
+            links.forEach(function(link) {
               var href = link.getAttribute('href');
               var nid = Object.keys(nidUrlMap).find(nid => nidUrlMap[nid] === href);
               
               if (nid) {
                 link.dataset.nid = nid;
+                
                 link.addEventListener('click', function() {
                   // Create FormData for POST request to rl.php
                   var formData = new FormData();

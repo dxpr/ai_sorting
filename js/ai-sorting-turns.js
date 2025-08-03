@@ -18,8 +18,10 @@
           var rlEndpointUrl = viewSettings.rlEndpointUrl;
 
           if (nids && nids.length > 0) {
+            
             var observer = new IntersectionObserver(function(entries) {
               if (entries[0].isIntersecting) {
+                
                 // Create FormData for POST request to rl.php
                 var formData = new FormData();
                 formData.append('action', 'turns');
