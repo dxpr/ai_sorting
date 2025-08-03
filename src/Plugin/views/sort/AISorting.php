@@ -82,7 +82,6 @@ class AISorting extends SortPluginBase {
    */
   protected function defineOptions() {
     $options = parent::defineOptions();
-    $options['alpha'] = ['default' => 2.0];
     $options['order'] = ['default' => '']; // We don't use this, but prevents warnings.
     $options['cache_max_age'] = ['default' => 60]; // Default max-age set to 60 seconds.
     return $options;
@@ -108,10 +107,9 @@ class AISorting extends SortPluginBase {
       ]);
 
       // Get Thompson Sampling scores from RL module
-      $alpha = (float) $this->options['alpha'];
-      $logger->debug('About to call getUCB1Scores with alpha: @alpha', ['@alpha' => $alpha]);
+      $logger->debug('About to call getUCB1Scores for Thompson Sampling');
       
-      $scores = $this->experimentManager->getUCB1Scores($experiment_uuid, $alpha);
+      $scores = $this->experimentManager->getUCB1Scores($experiment_uuid);
       $logger->debug('getUCB1Scores returned: @scores', ['@scores' => print_r($scores, TRUE)]);
 
       if (empty($scores)) {
@@ -178,35 +176,21 @@ class AISorting extends SortPluginBase {
         <strong>Best for:</strong> News feeds, product listings, blog posts, or any content where user engagement matters.'),
     ];
 
-    $url = Url::fromUri('https://medium.com/analytics-vidhya/multi-armed-bandit-analysis-of-upper-confidence-bound-algorithm-4b84be516047', [
+    $url = Url::fromUri('https://en.wikipedia.org/wiki/Thompson_sampling', [
       'attributes' => [
         'target' => '_blank',
         'rel' => 'noopener noreferrer',
       ],
     ]);
-    $link = Link::fromTextAndUrl($this->t('Learn more about the UCB1 algorithm'), $url);
+    $link = Link::fromTextAndUrl($this->t('Learn more about Thompson Sampling'), $url);
 
-    // Add an advanced details element for alpha and cache settings.
+    // Add an advanced details element for cache settings.
     $form['ai_sorting_settings']['advanced'] = [
       '#type' => 'details',
       '#title' => $this->t('Advanced Settings'),
       '#open' => FALSE,
     ];
 
-    $form['ai_sorting_settings']['advanced']['alpha'] = [
-      '#type' => 'number',
-      '#title' => $this->t('Exploration-Exploitation Balance (Alpha)'),
-      '#default_value' => $this->options['alpha'],
-      '#min' => 0,
-      '#max' => 10,
-      '#step' => 0.1,
-      '#description' => $this->t('Controls the balance between exploring new options and exploiting known successful options. Higher values encourage more exploration. Typical values range from 1 to 3. @link', [
-        '@link' => $link->toString(),
-      ]),
-      '#field_prefix' => $this->t('Alpha:'),
-      '#field_suffix' => $this->t('(0.0 to 10.0)'),
-      '#required' => TRUE,
-    ];
 
     $form['ai_sorting_settings']['advanced']['cache_max_age'] = [
       '#type' => 'select',
@@ -220,7 +204,7 @@ class AISorting extends SortPluginBase {
         300 => $this->t('5 minutes'),
         600 => $this->t('10 minutes'),
       ],
-      '#description' => $this->t('This is used as the value for max-age in Cache-Control headers. Note: This setting overrides the page cache time and is specific to the AI sorting algorithm. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect the exploration aspect of the algorithm, which benefits from up-to-date data.'),
+      '#description' => $this->t('This is used as the value for max-age in Cache-Control headers. Note: This setting overrides the page cache time and is specific to the AI sorting algorithm. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect Thompson Sampling randomization, which benefits from fresh data.'),
       '#required' => TRUE,
     ];
   }
@@ -232,11 +216,6 @@ class AISorting extends SortPluginBase {
     parent::submitOptionsForm($form, $form_state);
 
     $options = &$form_state->getValue('options');
-
-    // Save the alpha value
-    if (isset($options['ai_sorting_settings']['advanced']['alpha'])) {
-      $this->options['alpha'] = $options['ai_sorting_settings']['advanced']['alpha'];
-    }
 
     // Save the cache_max_age value
     if (isset($options['ai_sorting_settings']['advanced']['cache_max_age'])) {
@@ -278,7 +257,6 @@ class AISorting extends SortPluginBase {
    */
   public function adminSummary() {
     $summary = [];
-    $summary[] = $this->t('Alpha: @alpha', ['@alpha' => $this->options['alpha']]);
     
     $cache_max_age = $this->options['cache_max_age'];
     if ($cache_max_age == 0) {
