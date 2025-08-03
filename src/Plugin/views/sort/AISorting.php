@@ -243,6 +243,32 @@ class AISorting extends SortPluginBase {
       $this->options['cache_max_age'] = $options['ai_sorting_settings']['advanced']['cache_max_age'];
     }
 
+    // Auto-configure views cache to match AI sorting settings
+    $cache_max_age = $this->options['cache_max_age'] ?? 60;
+    $current_cache = $this->view->display_handler->getOption('cache');
+    
+    if ($cache_max_age > 0) {
+      // Set time-based cache matching our AI sorting refresh rate
+      if ($current_cache['type'] !== 'time' || $current_cache['options']['output_lifespan'] != $cache_max_age) {
+        $this->view->display_handler->setOption('cache', [
+          'type' => 'time',
+          'options' => [
+            'output_lifespan' => $cache_max_age,
+            'results_lifespan' => $cache_max_age,
+          ]
+        ]);
+        
+        \Drupal::messenger()->addStatus($this->t('Views cache has been automatically set to @seconds seconds to match your AI sorting refresh rate.', ['@seconds' => $cache_max_age]));
+      }
+    } else {
+      // Disable cache when AI sorting cache is set to 0
+      if ($current_cache['type'] !== 'none') {
+        $this->view->display_handler->setOption('cache', ['type' => 'none']);
+        
+        \Drupal::messenger()->addWarning($this->t('Views cache has been automatically disabled because AI sorting cache is set to "Never cache".'));
+      }
+    }
+
     // Clear any caches if necessary
     \Drupal::service('plugin.manager.views.sort')->clearCachedDefinitions();
   }
