@@ -10,6 +10,7 @@ use Drupal\rl\Service\ExperimentManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * AI-based sorting plugin for Views using Reinforcement Learning.
@@ -33,6 +34,13 @@ class AISorting extends SortPluginBase {
   protected $requestStack;
 
   /**
+   * Logger factory.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   */
+  protected $loggerFactory;
+
+  /**
    * Constructs a new AISorting object.
    *
    * @param array $configuration
@@ -45,11 +53,14 @@ class AISorting extends SortPluginBase {
    *   The RL experiment manager.
    * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
    *   The request stack.
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   *   The logger factory.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, ExperimentManagerInterface $experiment_manager, RequestStack $request_stack) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, ExperimentManagerInterface $experiment_manager, RequestStack $request_stack, LoggerChannelFactoryInterface $logger_factory) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->experimentManager = $experiment_manager;
     $this->requestStack = $request_stack;
+    $this->loggerFactory = $logger_factory;
   }
 
   /**
@@ -61,7 +72,8 @@ class AISorting extends SortPluginBase {
       $plugin_id,
       $plugin_definition,
       $container->get('rl.experiment_manager'),
-      $container->get('request_stack')
+      $container->get('request_stack'),
+      $container->get('logger.factory')
     );
   }
 
@@ -80,89 +92,68 @@ class AISorting extends SortPluginBase {
    * {@inheritdoc}
    */
   public function query() {
-    $this->ensureMyTable();
+    $logger = $this->loggerFactory->get('ai_sorting');
+    $logger->debug('AI Sorting query() method started');
 
-    // Generate experiment UUID from view and display
-    $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
+    try {
+      $this->ensureMyTable();
+      $logger->debug('ensureMyTable() completed');
 
-    // Get UCB1 scores from RL module
-    $alpha = (float) $this->options['alpha'];
-    $scores = $this->experimentManager->getUCB1Scores($experiment_uuid, $alpha);
+      // Generate experiment UUID from view and display
+      $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
+      $logger->debug('Generated experiment UUID: @uuid for view: @view, display: @display', [
+        '@uuid' => $experiment_uuid,
+        '@view' => $this->view->id(),
+        '@display' => $this->view->current_display,
+      ]);
 
-    if (empty($scores)) {
-      // No data yet, fall back to random order
-      $this->query->addOrderBy(NULL, 'RAND()', 'DESC', 'ai_sorting_fallback');
-      return;
+      // Get Thompson Sampling scores from RL module
+      $alpha = (float) $this->options['alpha'];
+      $logger->debug('About to call getUCB1Scores with alpha: @alpha', ['@alpha' => $alpha]);
+      
+      $scores = $this->experimentManager->getUCB1Scores($experiment_uuid, $alpha);
+      $logger->debug('getUCB1Scores returned: @scores', ['@scores' => print_r($scores, TRUE)]);
+
+      if (empty($scores)) {
+        $logger->debug('No scores available, using fallback random order');
+        // No data yet, fall back to random order
+        $this->query->addOrderBy(NULL, 'RAND()', 'DESC', 'ai_sorting_fallback');
+        return;
+      }
+
+      $logger->debug('Building CASE statement for @count scores', ['@count' => count($scores)]);
+
+      // Build a CASE statement to order by UCB1 scores
+      $case_statement = 'CASE ' . $this->tableAlias . '.nid ';
+      foreach ($scores as $nid => $score) {
+        $case_statement .= "WHEN " . (int) $nid . " THEN " . (float) $score . " ";
+      }
+      $case_statement .= 'ELSE 0 END';
+
+      // Add small random noise to break ties
+      $order_formula = $case_statement . ' + (RAND() * 0.000001)';
+      $logger->debug('Generated order formula: @formula', ['@formula' => $order_formula]);
+
+      $this->query->addOrderBy(
+        NULL,
+        $order_formula,
+        'DESC',
+        'ai_sorting_score'
+      );
+      $logger->debug('Added order by clause');
+
+      // Cache control headers handled by event subscriber
+      $logger->debug('Cache control handled by event subscriber');
+
+    } catch (\Exception $e) {
+      $logger->error('Error in AI Sorting query(): @message', ['@message' => $e->getMessage()]);
+      $logger->error('Stack trace: @trace', ['@trace' => $e->getTraceAsString()]);
+      throw $e;
     }
 
-    // Build a CASE statement to order by UCB1 scores
-    $case_statement = 'CASE ' . $this->tableAlias . '.nid ';
-    foreach ($scores as $nid => $score) {
-      $case_statement .= "WHEN " . (int) $nid . " THEN " . (float) $score . " ";
-    }
-    $case_statement .= 'ELSE 0 END';
-
-    // Add small random noise to break ties
-    $order_formula = $case_statement . ' + (RAND() * 0.000001)';
-
-    $this->query->addOrderBy(
-      NULL,
-      $order_formula,
-      'DESC',
-      'ai_sorting_score'
-    );
-
-    // Set the cache-control header
-    $this->setCacheControlHeader();
+    $logger->debug('AI Sorting query() method completed successfully');
   }
 
-  /**
-   * Sets the cache-control header with configurable max-age and s-maxage.
-   */
-  protected function setCacheControlHeader() {
-    $request = $this->requestStack->getCurrentRequest();
-    if ($request && $request->headers->has('X-Drupal-Cache')) {
-      // This is an internal subrequest, so we shouldn't modify the headers.
-      return;
-    }
-
-    // Retrieve the configured max-age.
-    $max_age = isset($this->options['cache_max_age']) ? (int) $this->options['cache_max_age'] : 60;
-
-    // Retrieve existing Cache-Control header if any.
-    $existing_cache_control = $request->headers->get('Cache-Control', '');
-
-    // Regex to find max-age and s-maxage values.
-    $max_age_regex = '/max-age=(\d+)/';
-    $s_maxage_regex = '/s-maxage=(\d+)/';
-
-    // Function to replace the age value if it's higher than the new max_age.
-    $replace_age = function ($matches) use ($max_age) {
-      $current_age = (int) $matches[1];
-      return $current_age > $max_age ? str_replace($matches[1], $max_age, $matches[0]) : $matches[0];
-    };
-
-    // Check and replace max-age.
-    if (preg_match($max_age_regex, $existing_cache_control)) {
-      $existing_cache_control = preg_replace_callback($max_age_regex, $replace_age, $existing_cache_control);
-    }
-
-    // Check and replace s-maxage.
-    if (preg_match($s_maxage_regex, $existing_cache_control)) {
-      $existing_cache_control = preg_replace_callback($s_maxage_regex, $replace_age, $existing_cache_control);
-    }
-
-    // If neither max-age nor s-maxage is present, do nothing.
-    if (!preg_match($max_age_regex, $existing_cache_control) && !preg_match($s_maxage_regex, $existing_cache_control)) {
-      return;
-    }
-
-    // Set the updated Cache-Control header.
-    $response = new Response();
-    $response->headers->set('Cache-Control', $existing_cache_control);
-    $response->prepare($request);
-    $response->send();
-  }
 
   /**
    * {@inheritdoc}
