@@ -91,35 +91,20 @@ class AISorting extends SortPluginBase {
    * {@inheritdoc}
    */
   public function query() {
-    $logger = $this->loggerFactory->get('ai_sorting');
-    $logger->debug('AI Sorting query() method started');
-
     try {
       $this->ensureMyTable();
-      $logger->debug('ensureMyTable() completed');
 
       // Generate experiment UUID from view and display
       $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
-      $logger->debug('Generated experiment UUID: @uuid for view: @view, display: @display', [
-        '@uuid' => $experiment_uuid,
-        '@view' => $this->view->id(),
-        '@display' => $this->view->current_display,
-      ]);
 
       // Get Thompson Sampling scores from RL module
-      $logger->debug('About to call getUCB1Scores for Thompson Sampling');
-      
       $scores = $this->experimentManager->getUCB1Scores($experiment_uuid);
-      $logger->debug('getUCB1Scores returned: @scores', ['@scores' => print_r($scores, TRUE)]);
 
       if (empty($scores)) {
-        $logger->debug('No scores available, using fallback random order');
         // No data yet, fall back to random order
         $this->query->addOrderBy(NULL, 'RAND()', 'DESC', 'ai_sorting_fallback');
         return;
       }
-
-      $logger->debug('Building CASE statement for @count scores', ['@count' => count($scores)]);
 
       // Build a CASE statement to order by UCB1 scores
       $case_statement = 'CASE ' . $this->tableAlias . '.nid ';
@@ -130,7 +115,6 @@ class AISorting extends SortPluginBase {
 
       // Add small random noise to break ties
       $order_formula = $case_statement . ' + (RAND() * 0.000001)';
-      $logger->debug('Generated order formula: @formula', ['@formula' => $order_formula]);
 
       $this->query->addOrderBy(
         NULL,
@@ -138,19 +122,16 @@ class AISorting extends SortPluginBase {
         'DESC',
         'ai_sorting_score'
       );
-      $logger->debug('Added order by clause');
 
       // Disable dynamic page cache for AI sorting
       \Drupal::service('page_cache_kill_switch')->trigger();
-      $logger->debug('Marked AI sorting active and disabled caching');
 
     } catch (\Exception $e) {
+      $logger = $this->loggerFactory->get('ai_sorting');
       $logger->error('Error in AI Sorting query(): @message', ['@message' => $e->getMessage()]);
       $logger->error('Stack trace: @trace', ['@trace' => $e->getTraceAsString()]);
       throw $e;
     }
-
-    $logger->debug('AI Sorting query() method completed successfully');
   }
 
 
