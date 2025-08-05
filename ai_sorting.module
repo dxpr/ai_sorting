@@ -35,10 +35,37 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   // Collect node IDs and URLs for JavaScript tracking
   $nids = [];
   $nid_url_map = [];
-  foreach ($view->result as $row) {
+  
+  // DEBUG: Log what's in the view results
+  \Drupal::logger('ai_sorting')->notice('View @view_id (@display) has @count results', [
+    '@view_id' => $view->id(),
+    '@display' => $view->current_display,
+    '@count' => count($view->result),
+  ]);
+  
+  foreach ($view->result as $index => $row) {
+    // DEBUG: Log the structure of each row
+    \Drupal::logger('ai_sorting')->notice('Row @index structure: @structure', [
+      '@index' => $index,
+      '@structure' => print_r($row, TRUE),
+    ]);
+    
+    $nid = NULL;
+    
+    // Try different ways to get the node ID
     if (isset($row->nid)) {
-      $nids[] = $row->nid;
-      $nid_url_map[$row->nid] = Url::fromRoute('entity.node.canonical', ['node' => $row->nid])->toString();
+      $nid = $row->nid;
+    } elseif (isset($row->node_field_data_nid)) {
+      $nid = $row->node_field_data_nid;
+    } elseif (isset($row->_entity) && $row->_entity instanceof \Drupal\node\NodeInterface) {
+      $nid = $row->_entity->id();
+    } elseif (isset($row->_object) && method_exists($row->_object, 'id')) {
+      $nid = $row->_object->id();
+    }
+    
+    if ($nid) {
+      $nids[] = $nid;
+      $nid_url_map[$nid] = Url::fromRoute('entity.node.canonical', ['node' => $nid])->toString();
     }
   }
 
@@ -50,6 +77,14 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     $rl_path = \Drupal::service('extension.list.module')->getPath('rl');
     $base_path = \Drupal::request()->getBasePath();
 
+    // DEBUG: Log the settings being attached
+    \Drupal::logger('ai_sorting')->notice('Attaching JS settings for view @view_id: experiment=@uuid, nids=@nids, endpoint=@endpoint', [
+      '@view_id' => $view->id(),
+      '@uuid' => $experiment_uuid,
+      '@nids' => implode(',', $nids),
+      '@endpoint' => "{$base_path}/{$rl_path}/rl.php",
+    ]);
+
     // Attach JavaScript libraries and settings
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_turns';
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_rewards';
@@ -60,6 +95,12 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       'rlEndpointUrl' => "{$base_path}/{$rl_path}/rl.php",
       'displayId' => $view->current_display,
     ];
+  } else {
+    // DEBUG: Log when no NIDs are found
+    \Drupal::logger('ai_sorting')->warning('No node IDs found in view @view_id (@display) results', [
+      '@view_id' => $view->id(),
+      '@display' => $view->current_display,
+    ]);
   }
 }
 
