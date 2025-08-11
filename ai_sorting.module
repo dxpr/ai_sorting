@@ -18,7 +18,10 @@ function ai_sorting_help($route_name, RouteMatchInterface $route_match) {
     case 'help.page.ai_sorting':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The AI Sorting module provides an intelligent sorting mechanism for Drupal Views using reinforcement learning algorithms.') . '</p>';
+      $output .= '<p>' . t(
+        'The AI Sorting module provides an intelligent sorting mechanism
+          for Drupal Views using reinforcement learning algorithms.'
+      ) . '</p>';
       return $output;
   }
 }
@@ -57,7 +60,8 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
 
     if ($nid) {
       $nids[] = $nid;
-      $nid_url_map[$nid] = Url::fromRoute('entity.node.canonical', ['node' => $nid])->toString();
+      $nid_url_map[$nid] = Url::fromRoute('entity.node.canonical',
+        ['node' => $nid])->toString();
     }
   }
 
@@ -66,7 +70,9 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     $experiment_uuid = sha1($view->id() . ':' . $view->current_display);
 
     // Register this experiment with the RL module.
-    $registration_service = \Drupal::service('ai_sorting.experiment_registration');
+    $registration_service = \Drupal::service(
+      'ai_sorting.experiment_registration'
+    );
     $registration_service->registerExperiment($experiment_uuid);
 
     // Get RL module path for optimized endpoint.
