@@ -149,9 +149,10 @@ class AISorting extends SortPluginBase {
         $arm_ids
       );
 
+      // Fail hard if RL module doesn't return scores - no silent fallbacks!
       if (empty($scores)) {
         throw new \RuntimeException(sprintf(
-          'No scores for experiment "%s". RL module should always return scores.',
+          'AI Sorting FAILED: No scores returned for experiment "%s". RL module must always return scores for requested arms. Check RL module configuration and database connectivity.',
           $experiment_uuid
         ));
       }

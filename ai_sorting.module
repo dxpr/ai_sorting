@@ -5,7 +5,7 @@
  * Primary module file for AI Sorting.
  */
 
-use Drupal\node\NodeInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\views\ViewExecutable;
 use Drupal\Core\Url;
@@ -36,56 +36,82 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     return;
   }
 
-  // Collect node IDs and URLs for JavaScript tracking.
-  $nids = [];
-  $nid_url_map = [];
+  // Get the base field for this view's data source.
+  $base_field = $view->storage->get('base_field');
+  if (empty($base_field)) {
+    // Can't track without a unique identifier.
+    return;
+  }
+
+  // Collect entity IDs and URLs for JavaScript tracking.
+  $entity_ids = [];
+  $entity_url_map = [];
 
   foreach ($view->result as $index => $row) {
+    $entity_id = NULL;
+    $entity = NULL;
 
-    $nid = NULL;
+    // Try to get the entity ID from the base field.
+    if (isset($row->$base_field)) {
+      $entity_id = $row->$base_field;
+    }
+    
+    // Try to get the entity object.
+    if (isset($row->_entity) && $row->_entity instanceof EntityInterface) {
+      $entity = $row->_entity;
+      if (!$entity_id) {
+        $entity_id = $entity->id();
+      }
+    }
+    elseif (isset($row->_object) && $row->_object instanceof EntityInterface) {
+      $entity = $row->_object;
+      if (!$entity_id) {
+        $entity_id = $entity->id();
+      }
+    }
 
-    // Try different ways to get the node ID.
-    if (isset($row->nid)) {
-      $nid = $row->nid;
-    }
-    elseif (isset($row->node_field_data_nid)) {
-      $nid = $row->node_field_data_nid;
-    }
-    elseif (isset($row->_entity) && $row->_entity instanceof NodeInterface) {
-      $nid = $row->_entity->id();
-    }
-    elseif (isset($row->_object) && method_exists($row->_object, 'id')) {
-      $nid = $row->_object->id();
-    }
-
-    if ($nid) {
-      $nids[] = $nid;
-      $nid_url_map[$nid] = Url::fromRoute('entity.node.canonical',
-        ['node' => $nid])->toString();
+    if ($entity_id) {
+      $entity_ids[] = (string) $entity_id;
+      
+      // Generate URL for the entity if we have the entity object.
+      $url = '';
+      if ($entity && $entity->hasLinkTemplate('canonical')) {
+        try {
+          $url = $entity->toUrl('canonical')->toString();
+        }
+        catch (\Exception $e) {
+          // If URL generation fails, leave empty.
+          $url = '';
+        }
+      }
+      
+      $entity_url_map[(string) $entity_id] = $url;
     }
   }
 
-  if (!empty($nids)) {
+  if (!empty($entity_ids)) {
     // Generate experiment UUID from view and display.
     $experiment_uuid = sha1($view->id() . ':' . $view->current_display);
+    
+    // Create human-readable experiment name.
+    $experiment_name = $view->id() . ':' . $view->current_display;
 
     // Register this experiment with the RL module.
     $registration_service = \Drupal::service(
       'ai_sorting.experiment_registration'
     );
-    $registration_service->registerExperiment($experiment_uuid);
+    $registration_service->registerExperiment($experiment_uuid, $experiment_name);
 
     // Get RL module path for optimized endpoint.
     $rl_path = \Drupal::service('extension.list.module')->getPath('rl');
     $base_path = \Drupal::request()->getBasePath();
 
-    // Attach JavaScript libraries and settings.
-    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_turns';
-    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_rewards';
+    // Attach JavaScript library and settings.
+    $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_tracking';
     $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
       'experimentUuid' => $experiment_uuid,
-      'nids' => $nids,
-      'nidUrlMap' => $nid_url_map,
+      'entityIds' => $entity_ids,
+      'entityUrlMap' => $entity_url_map,
       'rlEndpointUrl' => "{$base_path}/{$rl_path}/rl.php",
       'displayId' => $view->current_display,
     ];
@@ -96,11 +122,28 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
  * Implements hook_views_data_alter().
  */
 function ai_sorting_views_data_alter(array &$data) {
-  $data['node']['ai_sorting'] = [
-    'title' => t('AI Sorting'),
-    'help' => t('Sort content using reinforcement learning algorithm.'),
-    'sort' => [
-      'id' => 'ai_sorting',
-    ],
-  ];
+  // Add AI Sorting to all entity base tables.
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $entity_types = $entity_type_manager->getDefinitions();
+  
+  foreach ($entity_types as $entity_type_id => $entity_type) {
+    // Only add to entity types that have a data table (appear in Views).
+    $data_table = $entity_type->getDataTable();
+    $base_table = $entity_type->getBaseTable();
+    
+    // Use data table if available, otherwise base table.
+    $table_name = $data_table ?: $base_table;
+    
+    if ($table_name && isset($data[$table_name])) {
+      $data[$table_name]['ai_sorting'] = [
+        'title' => t('AI Sorting'),
+        'help' => t('Sort @entity_type using reinforcement learning algorithm.', [
+          '@entity_type' => $entity_type->getLabel(),
+        ]),
+        'sort' => [
+          'id' => 'ai_sorting',
+        ],
+      ];
+    }
+  }
 }
