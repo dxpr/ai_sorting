@@ -104,7 +104,7 @@ class AISorting extends SortPluginBase {
         $time_window_seconds = $this->options['time_window_seconds'];
       }
 
-      $scores = $this->experimentManager->getThompsonScoresWithWindow(
+      $scores = $this->experimentManager->getThompsonScores(
         $experiment_uuid,
         $time_window_seconds
       );
