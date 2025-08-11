@@ -81,9 +81,7 @@ class AISorting extends SortPluginBase {
    */
   protected function defineOptions() {
     $options = parent::defineOptions();
-    // We don't use this, but prevents warnings.
     $options['order'] = ['default' => ''];
-    // Default max-age set to 60 seconds.
     $options['cache_max_age'] = ['default' => 60];
     return $options;
   }
@@ -95,43 +93,35 @@ class AISorting extends SortPluginBase {
     try {
       $this->ensureMyTable();
 
-      // Generate experiment UUID from view and display.
       $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
-
-      // Get Thompson Sampling scores from RL module.
-      $scores = $this->experimentManager->getUCB1Scores($experiment_uuid);
+      $scores = $this->experimentManager->getThompsonScores($experiment_uuid);
 
       if (empty($scores)) {
-        // No data yet, fall back to random order.
-        $this->query->addOrderBy(NULL, 'RAND()', 'DESC', 'ai_sorting_fallback');
-        return;
+        throw new \RuntimeException(sprintf(
+          'No scores for experiment "%s". Check RL tracking.',
+          $experiment_uuid
+        ));
       }
 
-      // Build a CASE statement to order by UCB1 scores.
       $case_statement = 'CASE ' . $this->tableAlias . '.nid ';
       foreach ($scores as $nid => $score) {
         $case_statement .= "WHEN " . (int) $nid . " THEN " . (float) $score . " ";
       }
       $case_statement .= 'ELSE 0 END';
 
-      // Add small random noise to break ties.
-      $order_formula = $case_statement . ' + (RAND() * 0.000001)';
-
       $this->query->addOrderBy(
         NULL,
-        $order_formula,
+        $case_statement,
         'DESC',
         'ai_sorting_score'
       );
 
-      // Disable dynamic page cache for AI sorting.
       \Drupal::service('page_cache_kill_switch')->trigger();
 
     }
     catch (\Exception $e) {
       $logger = $this->loggerFactory->get('ai_sorting');
-      $logger->error('Error in AI Sorting query(): @message', ['@message' => $e->getMessage()]);
-      $logger->error('Stack trace: @trace', ['@trace' => $e->getTraceAsString()]);
+      $logger->error('AI Sorting: @message', ['@message' => $e->getMessage()]);
       throw $e;
     }
   }
@@ -142,7 +132,6 @@ class AISorting extends SortPluginBase {
   public function buildOptionsForm(&$form, FormStateInterface $form_state) {
     parent::buildOptionsForm($form, $form_state);
 
-    // Remove the order selector since we always use DESC for UCB1 scores.
     unset($form['order']);
 
     $form['ai_sorting_settings'] = [
@@ -166,7 +155,6 @@ class AISorting extends SortPluginBase {
     ]);
     $link = Link::fromTextAndUrl($this->t('Learn more about Thompson Sampling'), $url);
 
-    // Add an advanced details element for cache settings.
     $form['ai_sorting_settings']['advanced'] = [
       '#type' => 'details',
       '#title' => $this->t('Advanced Settings'),
@@ -198,17 +186,14 @@ class AISorting extends SortPluginBase {
 
     $options = &$form_state->getValue('options');
 
-    // Save the cache_max_age value.
     if (isset($options['ai_sorting_settings']['advanced']['cache_max_age'])) {
       $this->options['cache_max_age'] = $options['ai_sorting_settings']['advanced']['cache_max_age'];
     }
 
-    // Auto-configure views cache to match AI sorting settings.
     $cache_max_age = $this->options['cache_max_age'] ?? 60;
     $current_cache = $this->view->display_handler->getOption('cache');
 
     if ($cache_max_age > 0) {
-      // Set time-based cache matching our AI sorting refresh rate.
       if ($current_cache['type'] !== 'time' || $current_cache['options']['output_lifespan'] != $cache_max_age) {
         $this->view->display_handler->setOption('cache', [
           'type' => 'time',
@@ -222,7 +207,6 @@ class AISorting extends SortPluginBase {
       }
     }
     else {
-      // Disable cache when AI sorting cache is set to 0.
       if ($current_cache['type'] !== 'none') {
         $this->view->display_handler->setOption('cache', ['type' => 'none']);
 
@@ -230,7 +214,6 @@ class AISorting extends SortPluginBase {
       }
     }
 
-    // Clear any caches if necessary.
     \Drupal::service('plugin.manager.views.sort')->clearCachedDefinitions();
   }
 
