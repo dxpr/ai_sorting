@@ -34,7 +34,7 @@ class ExperimentRegistrationService {
    * @param string $experiment_name
    *   Optional human-readable experiment name.
    */
-  public function registerExperiment(string $uuid, string $experiment_name = NULL): void {
+  public function registerExperiment(string $uuid, ?string $experiment_name = NULL): void {
     $this->experimentRegistry->register($uuid, 'ai_sorting', $experiment_name);
   }
 
