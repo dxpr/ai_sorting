@@ -1,6 +1,8 @@
 # AI Sorting
 
-Intelligent content ordering for Drupal Views using machine learning. Content automatically learns which items engage users most and surfaces the best-performing content.
+Intelligent content ordering for Drupal Views using machine learning. Content
+automatically learns which items engage users most and surfaces the
+best-performing content.
 
 ## Features
 
@@ -36,7 +38,8 @@ Intelligent content ordering for Drupal Views using machine learning. Content au
 ## Configuration
 
 - **Cache Lifetime** - How often content order refreshes
-- **Automatic Cache Setup** - Views cache automatically configured for optimal performance
+- **Automatic Cache Setup** - Views cache automatically configured for optimal
+  performance
 
 ## Dependencies
 
@@ -44,4 +47,5 @@ Intelligent content ordering for Drupal Views using machine learning. Content au
 
 ## Related Modules
 
-- [RL module](https://www.drupal.org/project/rl) - Core Thompson Sampling algorithm and API for developers
+- [RL module](https://www.drupal.org/project/rl) - Core Thompson Sampling
+  algorithm and API for developers

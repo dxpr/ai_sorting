@@ -15,4 +15,3 @@ services:
   ai_sorting.experiment_registration:
     class: Drupal\ai_sorting\Service\ExperimentRegistrationService
     arguments: ['@rl.experiment_registry']
-

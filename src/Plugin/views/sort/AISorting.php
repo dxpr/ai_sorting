@@ -9,7 +9,6 @@ use Drupal\Core\Url;
 use Drupal\rl\Service\ExperimentManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\HttpFoundation\Response;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
@@ -82,8 +81,10 @@ class AISorting extends SortPluginBase {
    */
   protected function defineOptions() {
     $options = parent::defineOptions();
-    $options['order'] = ['default' => '']; // We don't use this, but prevents warnings.
-    $options['cache_max_age'] = ['default' => 60]; // Default max-age set to 60 seconds.
+    // We don't use this, but prevents warnings.
+    $options['order'] = ['default' => ''];
+    // Default max-age set to 60 seconds.
+    $options['cache_max_age'] = ['default' => 60];
     return $options;
   }
 
@@ -94,26 +95,26 @@ class AISorting extends SortPluginBase {
     try {
       $this->ensureMyTable();
 
-      // Generate experiment UUID from view and display
+      // Generate experiment UUID from view and display.
       $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
 
-      // Get Thompson Sampling scores from RL module
+      // Get Thompson Sampling scores from RL module.
       $scores = $this->experimentManager->getUCB1Scores($experiment_uuid);
 
       if (empty($scores)) {
-        // No data yet, fall back to random order
+        // No data yet, fall back to random order.
         $this->query->addOrderBy(NULL, 'RAND()', 'DESC', 'ai_sorting_fallback');
         return;
       }
 
-      // Build a CASE statement to order by UCB1 scores
+      // Build a CASE statement to order by UCB1 scores.
       $case_statement = 'CASE ' . $this->tableAlias . '.nid ';
       foreach ($scores as $nid => $score) {
         $case_statement .= "WHEN " . (int) $nid . " THEN " . (float) $score . " ";
       }
       $case_statement .= 'ELSE 0 END';
 
-      // Add small random noise to break ties
+      // Add small random noise to break ties.
       $order_formula = $case_statement . ' + (RAND() * 0.000001)';
 
       $this->query->addOrderBy(
@@ -123,10 +124,11 @@ class AISorting extends SortPluginBase {
         'ai_sorting_score'
       );
 
-      // Disable dynamic page cache for AI sorting
+      // Disable dynamic page cache for AI sorting.
       \Drupal::service('page_cache_kill_switch')->trigger();
 
-    } catch (\Exception $e) {
+    }
+    catch (\Exception $e) {
       $logger = $this->loggerFactory->get('ai_sorting');
       $logger->error('Error in AI Sorting query(): @message', ['@message' => $e->getMessage()]);
       $logger->error('Stack trace: @trace', ['@trace' => $e->getTraceAsString()]);
@@ -134,14 +136,13 @@ class AISorting extends SortPluginBase {
     }
   }
 
-
   /**
    * {@inheritdoc}
    */
   public function buildOptionsForm(&$form, FormStateInterface $form_state) {
     parent::buildOptionsForm($form, $form_state);
-    
-    // Remove the order selector since we always use DESC for UCB1 scores
+
+    // Remove the order selector since we always use DESC for UCB1 scores.
     unset($form['order']);
 
     $form['ai_sorting_settings'] = [
@@ -172,7 +173,6 @@ class AISorting extends SortPluginBase {
       '#open' => FALSE,
     ];
 
-
     $form['ai_sorting_settings']['advanced']['cache_max_age'] = [
       '#type' => 'select',
       '#title' => $this->t('Browser and proxy cache maximum age'),
@@ -198,38 +198,39 @@ class AISorting extends SortPluginBase {
 
     $options = &$form_state->getValue('options');
 
-    // Save the cache_max_age value
+    // Save the cache_max_age value.
     if (isset($options['ai_sorting_settings']['advanced']['cache_max_age'])) {
       $this->options['cache_max_age'] = $options['ai_sorting_settings']['advanced']['cache_max_age'];
     }
 
-    // Auto-configure views cache to match AI sorting settings
+    // Auto-configure views cache to match AI sorting settings.
     $cache_max_age = $this->options['cache_max_age'] ?? 60;
     $current_cache = $this->view->display_handler->getOption('cache');
-    
+
     if ($cache_max_age > 0) {
-      // Set time-based cache matching our AI sorting refresh rate
+      // Set time-based cache matching our AI sorting refresh rate.
       if ($current_cache['type'] !== 'time' || $current_cache['options']['output_lifespan'] != $cache_max_age) {
         $this->view->display_handler->setOption('cache', [
           'type' => 'time',
           'options' => [
             'output_lifespan' => $cache_max_age,
             'results_lifespan' => $cache_max_age,
-          ]
+          ],
         ]);
-        
+
         \Drupal::messenger()->addStatus($this->t('Views cache has been automatically set to @seconds seconds to match your AI sorting refresh rate.', ['@seconds' => $cache_max_age]));
       }
-    } else {
-      // Disable cache when AI sorting cache is set to 0
+    }
+    else {
+      // Disable cache when AI sorting cache is set to 0.
       if ($current_cache['type'] !== 'none') {
         $this->view->display_handler->setOption('cache', ['type' => 'none']);
-        
+
         \Drupal::messenger()->addWarning($this->t('Views cache has been automatically disabled because AI sorting cache is set to "Never cache".'));
       }
     }
 
-    // Clear any caches if necessary
+    // Clear any caches if necessary.
     \Drupal::service('plugin.manager.views.sort')->clearCachedDefinitions();
   }
 
@@ -238,20 +239,23 @@ class AISorting extends SortPluginBase {
    */
   public function adminSummary() {
     $summary = [];
-    
+
     $cache_max_age = $this->options['cache_max_age'];
     if ($cache_max_age == 0) {
       $summary[] = $this->t('Cache: Never cache');
-    } elseif ($cache_max_age < 60) {
+    }
+    elseif ($cache_max_age < 60) {
       $summary[] = $this->t('Cache: @seconds seconds', ['@seconds' => $cache_max_age]);
-    } elseif ($cache_max_age < 3600) {
+    }
+    elseif ($cache_max_age < 3600) {
       $minutes = $cache_max_age / 60;
       $summary[] = $this->t('Cache: @minutes minute(s)', ['@minutes' => $minutes]);
-    } else {
+    }
+    else {
       $hours = $cache_max_age / 3600;
       $summary[] = $this->t('Cache: @hours hour(s)', ['@hours' => $hours]);
     }
-    
+
     return implode(', ', $summary);
   }
 

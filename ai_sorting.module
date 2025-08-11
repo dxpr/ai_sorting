@@ -5,6 +5,7 @@
  * Primary module file for AI Sorting.
  */
 
+use Drupal\node\NodeInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\views\ViewExecutable;
 use Drupal\Core\Url;
@@ -32,25 +33,28 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     return;
   }
 
-  // Collect node IDs and URLs for JavaScript tracking
+  // Collect node IDs and URLs for JavaScript tracking.
   $nids = [];
   $nid_url_map = [];
-  
+
   foreach ($view->result as $index => $row) {
-    
+
     $nid = NULL;
-    
-    // Try different ways to get the node ID
+
+    // Try different ways to get the node ID.
     if (isset($row->nid)) {
       $nid = $row->nid;
-    } elseif (isset($row->node_field_data_nid)) {
+    }
+    elseif (isset($row->node_field_data_nid)) {
       $nid = $row->node_field_data_nid;
-    } elseif (isset($row->_entity) && $row->_entity instanceof \Drupal\node\NodeInterface) {
+    }
+    elseif (isset($row->_entity) && $row->_entity instanceof NodeInterface) {
       $nid = $row->_entity->id();
-    } elseif (isset($row->_object) && method_exists($row->_object, 'id')) {
+    }
+    elseif (isset($row->_object) && method_exists($row->_object, 'id')) {
       $nid = $row->_object->id();
     }
-    
+
     if ($nid) {
       $nids[] = $nid;
       $nid_url_map[$nid] = Url::fromRoute('entity.node.canonical', ['node' => $nid])->toString();
@@ -58,18 +62,18 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   }
 
   if (!empty($nids)) {
-    // Generate experiment UUID from view and display
+    // Generate experiment UUID from view and display.
     $experiment_uuid = sha1($view->id() . ':' . $view->current_display);
 
-    // Register this experiment with the RL module
+    // Register this experiment with the RL module.
     $registration_service = \Drupal::service('ai_sorting.experiment_registration');
     $registration_service->registerExperiment($experiment_uuid);
 
-    // Get RL module path for optimized endpoint
+    // Get RL module path for optimized endpoint.
     $rl_path = \Drupal::service('extension.list.module')->getPath('rl');
     $base_path = \Drupal::request()->getBasePath();
 
-    // Attach JavaScript libraries and settings
+    // Attach JavaScript libraries and settings.
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_turns';
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_rewards';
     $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
