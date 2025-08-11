@@ -83,6 +83,9 @@ class AISorting extends SortPluginBase {
     $options = parent::defineOptions();
     $options['order'] = ['default' => ''];
     $options['cache_max_age'] = ['default' => 60];
+    $options['favor_recent'] = ['default' => FALSE];
+    // 3 months default
+    $options['time_window_seconds'] = ['default' => 7776000];
     return $options;
   }
 
@@ -94,7 +97,17 @@ class AISorting extends SortPluginBase {
       $this->ensureMyTable();
 
       $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
-      $scores = $this->experimentManager->getThompsonScores($experiment_uuid);
+
+      // Only apply time window if "Favor recent content" is enabled.
+      $time_window_seconds = NULL;
+      if ($this->options['favor_recent']) {
+        $time_window_seconds = $this->options['time_window_seconds'];
+      }
+
+      $scores = $this->experimentManager->getThompsonScoresWithWindow(
+        $experiment_uuid,
+        $time_window_seconds
+      );
 
       if (empty($scores)) {
         throw new \RuntimeException(sprintf(
@@ -143,8 +156,53 @@ class AISorting extends SortPluginBase {
         <strong>How it works:</strong><br>
         • <em>Turns</em>: When content appears in this view<br>
         • <em>Rewards</em>: When users click on that content<br>
-        • The algorithm balances showing popular content with exploring new options<br><br>
-        <strong>Best for:</strong> News feeds, product listings, blog posts, or any content where user engagement matters.'),
+        • The algorithm balances showing popular content with exploring new options.'),
+    ];
+
+    $form['ai_sorting_settings']['favor_recent'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Favor recent content'),
+      '#default_value' => $this->options['favor_recent'] ?? FALSE,
+      '#description' => $this->t('Enable this for content that becomes outdated (news, campaigns, seasonal products).'),
+    ];
+
+    $form['ai_sorting_settings']['time_window_seconds'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Count interactions from'),
+      '#default_value' => $this->options['time_window_seconds'] ?? 7776000,
+      '#options' => [
+    // 30 * 24 * 60 * 60
+        2592000 => $this->t('Last month'),
+    // 90 * 24 * 60 * 60
+        7776000 => $this->t('Last 3 months'),
+    // 180 * 24 * 60 * 60
+        15552000 => $this->t('Last 6 months'),
+    // 365 * 24 * 60 * 60
+        31536000 => $this->t('Last year'),
+      ],
+      '#states' => [
+        'visible' => [
+          ':input[name="options[ai_sorting_settings][favor_recent]"]' => ['checked' => TRUE],
+        ],
+      ],
+      '#description' => $this->t('Only recently active content influences recommendations.'),
+    ];
+
+    $form['ai_sorting_settings']['help'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Which timeframe should I choose?'),
+      '#open' => FALSE,
+      '#states' => [
+        'visible' => [
+          ':input[name="options[ai_sorting_settings][favor_recent]"]' => ['checked' => TRUE],
+        ],
+      ],
+      '#description' => $this->t('
+        <strong>News & announcements:</strong> Last month<br>
+        <strong>Blog posts:</strong> Last 3 months<br>
+        <strong>Products:</strong> Last 6 months<br>
+        <strong>Leave unchecked for:</strong> Documentation, tutorials, evergreen content
+      '),
     ];
 
     $url = Url::fromUri('https://en.wikipedia.org/wiki/Thompson_sampling', [
@@ -186,6 +244,14 @@ class AISorting extends SortPluginBase {
 
     $options = &$form_state->getValue('options');
 
+    if (isset($options['ai_sorting_settings']['favor_recent'])) {
+      $this->options['favor_recent'] = $options['ai_sorting_settings']['favor_recent'];
+    }
+
+    if (isset($options['ai_sorting_settings']['time_window_seconds'])) {
+      $this->options['time_window_seconds'] = $options['ai_sorting_settings']['time_window_seconds'];
+    }
+
     if (isset($options['ai_sorting_settings']['advanced']['cache_max_age'])) {
       $this->options['cache_max_age'] = $options['ai_sorting_settings']['advanced']['cache_max_age'];
     }
@@ -223,6 +289,28 @@ class AISorting extends SortPluginBase {
   public function adminSummary() {
     $summary = [];
 
+    // Time window summary.
+    if (!empty($this->options['favor_recent'])) {
+      $time_window_seconds = $this->options['time_window_seconds'];
+      if ($time_window_seconds == 2592000) {
+        $summary[] = $this->t('Time window: Last month');
+      }
+      elseif ($time_window_seconds == 7776000) {
+        $summary[] = $this->t('Time window: Last 3 months');
+      }
+      elseif ($time_window_seconds == 15552000) {
+        $summary[] = $this->t('Time window: Last 6 months');
+      }
+      elseif ($time_window_seconds == 31536000) {
+        $summary[] = $this->t('Time window: Last year');
+      }
+      else {
+        $days = round($time_window_seconds / 86400);
+        $summary[] = $this->t('Time window: Last @days days', ['@days' => $days]);
+      }
+    }
+
+    // Cache summary.
     $cache_max_age = $this->options['cache_max_age'];
     if ($cache_max_age == 0) {
       $summary[] = $this->t('Cache: Never cache');
