@@ -1,11 +1,16 @@
-# AI Sorting
+# AI Sorting - Self-Learning A/B Testing for Content
 
-Intelligent ordering for Drupal Views using machine learning. Automatically learns which items engage users most and surfaces the best-performing content, regardless of entity type.
+Advanced A/B testing for Drupal Views that learns automatically. Instead of manually setting up A/B tests, AI Sorting continuously tests all content simultaneously using Thompson Sampling machine learning to surface winners while giving new content fair exposure.
 
 ## Features
 
-- **Universal entity support** - Works with nodes, users, taxonomy terms, media, custom entities, and external data
-- **Thompson Sampling algorithm** - Advanced machine learning for exploration vs exploitation
+- **Advanced A/B Testing Engine** - Powered by Thompson Sampling machine learning
+  - Multi-variant testing of unlimited content pieces simultaneously  
+  - Zero setup required - no manual test configuration or statistical analysis
+  - Continuous learning - tests never end, performance improves over time
+  - Automatic statistical significance handling
+- **Universal entity support** - Works with nodes, users, taxonomy terms, media,
+  custom entities, and external data
 - **Cold start handling** - New items get proper exploration scores automatically  
 - **Views integration** - Simple sort plugin that works with any Views-compatible data source
 - **Real-time learning** - Continuous adaptation based on user interactions
@@ -26,6 +31,16 @@ Intelligent ordering for Drupal Views using machine learning. Automatically lear
 3. **Optimize Order** - Best items automatically move to prominent positions
 4. **Handle New Items** - New content gets exploration scores for fair exposure
 5. **Continuous Improvement** - Performance gets better with every visitor
+
+## Beyond Traditional A/B Testing
+
+Unlike traditional A/B testing tools, AI Sorting provides:
+
+- **Multi-Variant Testing** - Test unlimited content pieces simultaneously, not just A vs B
+- **Zero Manual Work** - No test setup, statistical analysis, or winner selection required  
+- **Continuous Optimization** - Tests never end, performance improves over time
+- **Smart Traffic Allocation** - Reduces traffic waste by promoting winners faster
+- **Cold Start Problem Solved** - New content automatically gets fair exposure
 
 ## Use Cases
 
