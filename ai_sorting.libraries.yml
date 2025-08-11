@@ -1,15 +1,7 @@
-ai_sorting_turns:
+ai_sorting_tracking:
   version: VERSION
   js:
-    js/ai-sorting-turns.js: {}
-  dependencies:
-    - core/drupal
-    - core/drupalSettings
-
-ai_sorting_rewards:
-  version: VERSION
-  js:
-    js/ai-sorting-rewards.js: {}
+    js/ai-sorting-tracking.js: {}
   dependencies:
     - core/drupal
     - core/drupalSettings

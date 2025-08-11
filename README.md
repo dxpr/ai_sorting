@@ -1,31 +1,31 @@
 # AI Sorting
 
-Intelligent content ordering for Drupal Views using machine learning. Content
-automatically learns which items engage users most and surfaces the
-best-performing content.
+Intelligent ordering for Drupal Views using machine learning. Automatically learns which items engage users most and surfaces the best-performing content, regardless of entity type.
 
 ## Features
 
-- Automatic content optimization based on user engagement
-- Thompson Sampling machine learning algorithm
-- Views integration as sort plugin
-- Automatic cache management
-- Real-time learning and adaptation
+- **Universal entity support** - Works with nodes, users, taxonomy terms, media, custom entities, and external data
+- **Thompson Sampling algorithm** - Advanced machine learning for exploration vs exploitation
+- **Cold start handling** - New items get proper exploration scores automatically  
+- **Views integration** - Simple sort plugin that works with any Views-compatible data source
+- **Real-time learning** - Continuous adaptation based on user interactions
+- **Fail-hard debugging** - No silent fallbacks, issues are immediately visible
 
 ## Setup
 
 1. Install the module (requires [RL module](https://www.drupal.org/project/rl))
-2. Edit any View display
+2. Edit any View display (nodes, users, terms, media, custom entities)
 3. Add "AI Sorting" as a sort criteria
-4. Configure cache refresh rate (30 seconds to 10 minutes)
-5. Save - content immediately begins learning from user interactions
+4. Configure cache refresh rate and time window options
+5. Save - items immediately begin learning from user interactions
 
 ## How It Works
 
-1. **Track Engagement** - JavaScript monitors when content is viewed and clicked
-2. **Learn Patterns** - Machine learning identifies high-performing content
-3. **Optimize Order** - Best content automatically moves to prominent positions
-4. **Continuous Improvement** - Performance gets better with every visitor
+1. **Track Engagement** - JavaScript monitors when items are viewed and clicked
+2. **Learn Patterns** - Thompson Sampling identifies high-performing items  
+3. **Optimize Order** - Best items automatically move to prominent positions
+4. **Handle New Items** - New content gets exploration scores for fair exposure
+5. **Continuous Improvement** - Performance gets better with every visitor
 
 ## Use Cases
 

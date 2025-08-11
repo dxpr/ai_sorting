@@ -98,28 +98,79 @@ class AISorting extends SortPluginBase {
 
       $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
 
-      // Only apply time window if "Favor recent content" is enabled.
-      $time_window_seconds = NULL;
-      if ($this->options['favor_recent']) {
-        $time_window_seconds = $this->options['time_window_seconds'];
+      $time_window_seconds = $this->options['favor_recent'] ? $this->options['time_window_seconds'] : NULL;
+
+      // Get the base field from the view configuration.
+      $base_field = $this->view->storage->get('base_field');
+
+      // If no base field is defined, we can't sort.
+      if (empty($base_field)) {
+        throw new \RuntimeException('AI Sorting requires a base_field to be defined in the view.');
       }
 
+      // Get all possible arm IDs that will be in the result set.
+      // We need to execute a query to get these IDs.
+      $arm_ids = [];
+
+      // Clone the current query to get IDs without affecting the main query.
+      // The view's query at this point has all filters/conditions applied.
+      $id_query = clone $this->query;
+
+      // We only need the base field (ID field).
+      // Clear fields and add only the base field.
+      $id_query->clearFields();
+      $id_alias = $id_query->addField($this->tableAlias, $base_field);
+
+      // Remove any existing grouping and ordering.
+      $id_query->groupby = [];
+      $id_query->orderby = [];
+      $id_query->addGroupBy($id_alias);
+
+      // Build and execute the query to get all IDs.
+      // The query() method returns a SelectQuery object.
+      $query_obj = $id_query->query();
+
+      // Remove limit and offset from the query object.
+      $query_obj->range();
+
+      $result = $query_obj->execute();
+
+      foreach ($result as $row) {
+        if (isset($row->$base_field)) {
+          $arm_ids[] = (string) $row->$base_field;
+        }
+      }
+
+      // Pass all arm IDs to the RL module to get scores.
+      // The RL module will handle new arms by initializing them.
       $scores = $this->experimentManager->getThompsonScores(
         $experiment_uuid,
-        $time_window_seconds
+        $time_window_seconds,
+        $arm_ids
       );
 
+      // Fail hard if RL module doesn't return scores - no silent fallbacks!
       if (empty($scores)) {
         throw new \RuntimeException(sprintf(
-          'No scores for experiment "%s". Check RL tracking.',
+          'AI Sorting FAILED: No scores returned for experiment "%s". RL module must always return scores for requested arms. Check RL module configuration and database connectivity.',
           $experiment_uuid
         ));
       }
 
-      $case_statement = 'CASE ' . $this->tableAlias . '.nid ';
-      foreach ($scores as $nid => $score) {
-        $case_statement .= "WHEN " . (int) $nid . " THEN " . (float) $score . " ";
+      // Build the CASE statement for sorting.
+      $case_statement = 'CASE ' . $this->tableAlias . '.' . $base_field . ' ';
+
+      foreach ($scores as $arm_id => $score) {
+        if (is_numeric($arm_id)) {
+          $case_statement .= "WHEN " . (int) $arm_id . " THEN " . (float) $score . " ";
+        }
+        else {
+          $escaped_id = addslashes($arm_id);
+          $case_statement .= "WHEN '" . $escaped_id . "' THEN " . (float) $score . " ";
+        }
       }
+
+      // This should never be reached since we passed all IDs to RL module.
       $case_statement .= 'ELSE 0 END';
 
       $this->query->addOrderBy(
