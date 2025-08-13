@@ -4,8 +4,6 @@ namespace Drupal\ai_sorting\Plugin\views\sort;
 
 use Drupal\views\Plugin\views\sort\SortPluginBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Link;
-use Drupal\Core\Url;
 use Drupal\rl\Service\ExperimentManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -96,7 +94,10 @@ class AISorting extends SortPluginBase {
     try {
       $this->ensureMyTable();
 
-      $experiment_uuid = sha1($this->view->id() . ':' . $this->view->current_display);
+      // Generate deterministic experiment ID from view and display.
+      $experiment_id = 'ai_sorting-' . $this->view->id() . '-' . $this->view->current_display;
+      // Sanitize to ensure database-safe characters.
+      $experiment_id = preg_replace('/[^a-zA-Z0-9_-]/', '_', $experiment_id);
 
       $time_window_seconds = $this->options['favor_recent'] ? $this->options['time_window_seconds'] : NULL;
 
@@ -144,7 +145,7 @@ class AISorting extends SortPluginBase {
       // Pass all arm IDs to the RL module to get scores.
       // The RL module will handle new arms by initializing them.
       $scores = $this->experimentManager->getThompsonScores(
-        $experiment_uuid,
+        $experiment_id,
         $time_window_seconds,
         $arm_ids
       );
@@ -153,7 +154,7 @@ class AISorting extends SortPluginBase {
       if (empty($scores)) {
         throw new \RuntimeException(sprintf(
           'AI Sorting FAILED: No scores returned for experiment "%s". RL module must always return scores for requested arms. Check RL module configuration and database connectivity.',
-          $experiment_uuid
+          $experiment_id
         ));
       }
 
@@ -180,7 +181,7 @@ class AISorting extends SortPluginBase {
         'ai_sorting_score'
       );
 
-      \Drupal::service('page_cache_kill_switch')->trigger();
+      $this->setConditionalPageCache();
 
     }
     catch (\Exception $e) {
@@ -255,14 +256,6 @@ class AISorting extends SortPluginBase {
         <strong>Leave unchecked for:</strong> Documentation, tutorials, evergreen content
       '),
     ];
-
-    $url = Url::fromUri('https://en.wikipedia.org/wiki/Thompson_sampling', [
-      'attributes' => [
-        'target' => '_blank',
-        'rel' => 'noopener noreferrer',
-      ],
-    ]);
-    $link = Link::fromTextAndUrl($this->t('Learn more about Thompson Sampling'), $url);
 
     $form['ai_sorting_settings']['advanced'] = [
       '#type' => 'details',
@@ -379,6 +372,61 @@ class AISorting extends SortPluginBase {
     }
 
     return implode(', ', $summary);
+  }
+
+  /**
+   * Sets conditional page cache based on AI Sorting and site-wide settings.
+   */
+  protected function setConditionalPageCache() {
+    // Get AI Sorting cache setting from the view configuration directly.
+    $view_config = $this->view->storage->get('display');
+    $display_id = $this->view->current_display;
+
+    // Check current display first, then fall back to default display.
+    $ai_sorting_cache = NULL;
+    if (isset($view_config[$display_id]['display_options']['sorts']['ai_sorting']['cache_max_age'])) {
+      $ai_sorting_cache = (int) $view_config[$display_id]['display_options']['sorts']['ai_sorting']['cache_max_age'];
+    }
+    elseif (isset($view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'])) {
+      $ai_sorting_cache = (int) $view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'];
+    }
+
+    // Fallback to options or default.
+    if ($ai_sorting_cache === NULL) {
+      $ai_sorting_cache = $this->options['cache_max_age'] ?? 60;
+    }
+
+    // Get site-wide page cache configuration.
+    $site_config = \Drupal::config('system.performance');
+    $site_page_cache = $site_config->get('cache.page.max_age');
+
+    // Debug logging.
+    $logger = $this->loggerFactory->get('ai_sorting');
+    $logger->info('AI Sorting Cache Debug: AI cache=@ai, Site cache=@site, Display=@display', [
+      '@ai' => $ai_sorting_cache,
+      '@site' => $site_page_cache,
+      '@display' => $display_id,
+    ]);
+
+    // If site cache is disabled (0) or AI Sorting cache is longer/equal,
+    // leave page cache unchanged.
+    if ($site_page_cache == 0 || $ai_sorting_cache >= $site_page_cache) {
+      $logger->info('AI Sorting: Not overriding cache (site=@site, ai=@ai)', [
+        '@site' => $site_page_cache,
+        '@ai' => $ai_sorting_cache,
+      ]);
+      return;
+    }
+
+    $logger->info('AI Sorting: Overriding cache from @site to @ai seconds', [
+      '@site' => $site_page_cache,
+      '@ai' => $ai_sorting_cache,
+    ]);
+
+    // AI Sorting cache is shorter than site cache - store for subscriber.
+    // Store the desired cache time in a static variable for subscriber.
+    $cache_override = &drupal_static('ai_sorting_cache_override');
+    $cache_override = $ai_sorting_cache;
   }
 
 }

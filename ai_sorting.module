@@ -46,7 +46,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   $entity_ids = [];
   $entity_url_map = [];
 
-  foreach ($view->result as $index => $row) {
+  foreach ($view->result as $row) {
     $entity_id = NULL;
     $entity = NULL;
 
@@ -89,8 +89,10 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
   }
 
   if (!empty($entity_ids)) {
-    // Generate experiment UUID from view and display.
-    $experiment_uuid = sha1($view->id() . ':' . $view->current_display);
+    // Generate deterministic experiment ID from view and display.
+    $experiment_id = 'ai_sorting-' . $view->id() . '-' . $view->current_display;
+    // Sanitize to ensure database-safe characters.
+    $experiment_id = preg_replace('/[^a-zA-Z0-9_-]/', '_', $experiment_id);
 
     // Create human-readable experiment name.
     $experiment_name = $view->id() . ':' . $view->current_display;
@@ -99,7 +101,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     $registration_service = \Drupal::service(
       'ai_sorting.experiment_registration'
     );
-    $registration_service->registerExperiment($experiment_uuid, $experiment_name);
+    $registration_service->registerExperiment($experiment_id, $experiment_name);
 
     // Get RL module path for optimized endpoint.
     $rl_path = \Drupal::service('extension.list.module')->getPath('rl');
@@ -108,7 +110,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     // Attach JavaScript library and settings.
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_tracking';
     $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
-      'experimentUuid' => $experiment_uuid,
+      'experimentId' => $experiment_id,
       'entityIds' => $entity_ids,
       'entityUrlMap' => $entity_url_map,
       'rlEndpointUrl' => "{$base_path}/{$rl_path}/rl.php",
@@ -125,7 +127,7 @@ function ai_sorting_views_data_alter(array &$data) {
   $entity_type_manager = \Drupal::entityTypeManager();
   $entity_types = $entity_type_manager->getDefinitions();
 
-  foreach ($entity_types as $entity_type_id => $entity_type) {
+  foreach ($entity_types as $entity_type) {
     // Only add to entity types that have a data table (appear in Views).
     $data_table = $entity_type->getDataTable();
     $base_table = $entity_type->getBaseTable();

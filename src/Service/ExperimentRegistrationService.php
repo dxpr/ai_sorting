@@ -27,15 +27,15 @@ class ExperimentRegistrationService {
   }
 
   /**
-   * Register an experiment UUID.
+   * Register an experiment ID.
    *
-   * @param string $uuid
-   *   The experiment UUID to register.
+   * @param string $experiment_id
+   *   The experiment ID to register.
    * @param string $experiment_name
    *   Optional human-readable experiment name.
    */
-  public function registerExperiment(string $uuid, ?string $experiment_name = NULL): void {
-    $this->experimentRegistry->register($uuid, 'ai_sorting', $experiment_name);
+  public function registerExperiment(string $experiment_id, ?string $experiment_name = NULL): void {
+    $this->experimentRegistry->register($experiment_id, 'ai_sorting', $experiment_name);
   }
 
 }

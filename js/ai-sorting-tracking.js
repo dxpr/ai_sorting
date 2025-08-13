@@ -16,14 +16,14 @@
         }
 
         var viewSettings = settings.aiSorting.views[viewId];
-        var experimentUuid = viewSettings.experimentUuid;
+        var experimentId = viewSettings.experimentId;
         var entityIds = viewSettings.entityIds;
         var entityUrlMap = viewSettings.entityUrlMap;
         var rlEndpointUrl = viewSettings.rlEndpointUrl;
 
         // Fail hard if required data is missing
-        if (!experimentUuid || !rlEndpointUrl) {
-          throw new Error('AI Sorting: Missing required experiment data (experimentUuid or rlEndpointUrl)');
+        if (!experimentId || !rlEndpointUrl) {
+          throw new Error('AI Sorting: Missing required experiment data (experimentId or rlEndpointUrl)');
         }
 
         // Track turns (when view becomes visible)
@@ -33,7 +33,7 @@
               // Create FormData for POST request to rl.php
               var formData = new FormData();
               formData.append('action', 'turns');
-              formData.append('experiment_uuid', experimentUuid);
+              formData.append('experiment_id', experimentId);
               formData.append('arm_ids', entityIds.join(','));
 
               // Use sendBeacon for non-blocking request
@@ -66,7 +66,7 @@
                 // Create FormData for POST request to rl.php
                 var formData = new FormData();
                 formData.append('action', 'reward');
-                formData.append('experiment_uuid', experimentUuid);
+                formData.append('experiment_id', experimentId);
                 formData.append('arm_id', entityId);
 
                 // Use sendBeacon for non-blocking request
