@@ -5,6 +5,7 @@ namespace Drupal\ai_sorting\Plugin\views\sort;
 use Drupal\views\Plugin\views\sort\SortPluginBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\rl\Service\ExperimentManagerInterface;
+use Drupal\rl\Service\CacheManager;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -38,6 +39,13 @@ class AISorting extends SortPluginBase {
   protected $loggerFactory;
 
   /**
+   * The RL cache manager.
+   *
+   * @var \Drupal\rl\Service\CacheManager
+   */
+  protected $cacheManager;
+
+  /**
    * Constructs a new AISorting object.
    *
    * @param array $configuration
@@ -52,12 +60,15 @@ class AISorting extends SortPluginBase {
    *   The request stack.
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    *   The logger factory.
+   * @param \Drupal\rl\Service\CacheManager $cache_manager
+   *   The RL cache manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, ExperimentManagerInterface $experiment_manager, RequestStack $request_stack, LoggerChannelFactoryInterface $logger_factory) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, ExperimentManagerInterface $experiment_manager, RequestStack $request_stack, LoggerChannelFactoryInterface $logger_factory, CacheManager $cache_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->experimentManager = $experiment_manager;
     $this->requestStack = $request_stack;
     $this->loggerFactory = $logger_factory;
+    $this->cacheManager = $cache_manager;
   }
 
   /**
@@ -70,7 +81,8 @@ class AISorting extends SortPluginBase {
       $plugin_definition,
       $container->get('rl.experiment_manager'),
       $container->get('request_stack'),
-      $container->get('logger.factory')
+      $container->get('logger.factory'),
+      $container->get('rl.cache_manager')
     );
   }
 
@@ -181,7 +193,14 @@ class AISorting extends SortPluginBase {
         'ai_sorting_score'
       );
 
-      $this->setConditionalPageCache();
+      // Override page cache if AI Sorting cache is shorter than site cache.
+      $view_config = $this->view->storage->get('display');
+      $ai_sorting_cache = (int) ($view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'] ?? 60);
+
+      // Only override if not set to "use site default" (-1)
+      if ($ai_sorting_cache !== -1) {
+        $this->cacheManager->overridePageCacheIfShorter($ai_sorting_cache);
+      }
 
     }
     catch (\Exception $e) {
@@ -268,6 +287,7 @@ class AISorting extends SortPluginBase {
       '#title' => $this->t('Browser and proxy cache maximum age'),
       '#default_value' => $this->options['cache_max_age'],
       '#options' => [
+        -1 => $this->t('Use site default (no override)'),
         0 => $this->t('Never cache'),
         30 => $this->t('30 seconds'),
         60 => $this->t('1 minute'),
@@ -275,7 +295,7 @@ class AISorting extends SortPluginBase {
         300 => $this->t('5 minutes'),
         600 => $this->t('10 minutes'),
       ],
-      '#description' => $this->t('This is used as the value for max-age in Cache-Control headers. Note: This setting overrides the page cache time and is specific to the AI sorting algorithm. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect Thompson Sampling randomization, which benefits from fresh data.'),
+      '#description' => $this->t('Choose "Use site default" to respect site-wide page cache settings without override. Other values will override page cache only if shorter than site cache. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect Thompson Sampling randomization, which benefits from fresh data.'),
       '#required' => TRUE,
     ];
   }
@@ -356,7 +376,10 @@ class AISorting extends SortPluginBase {
 
     // Cache summary.
     $cache_max_age = $this->options['cache_max_age'];
-    if ($cache_max_age == 0) {
+    if ($cache_max_age == -1) {
+      $summary[] = $this->t('Cache: Use site default');
+    }
+    elseif ($cache_max_age == 0) {
       $summary[] = $this->t('Cache: Never cache');
     }
     elseif ($cache_max_age < 60) {
@@ -372,61 +395,6 @@ class AISorting extends SortPluginBase {
     }
 
     return implode(', ', $summary);
-  }
-
-  /**
-   * Sets conditional page cache based on AI Sorting and site-wide settings.
-   */
-  protected function setConditionalPageCache() {
-    // Get AI Sorting cache setting from the view configuration directly.
-    $view_config = $this->view->storage->get('display');
-    $display_id = $this->view->current_display;
-
-    // Check current display first, then fall back to default display.
-    $ai_sorting_cache = NULL;
-    if (isset($view_config[$display_id]['display_options']['sorts']['ai_sorting']['cache_max_age'])) {
-      $ai_sorting_cache = (int) $view_config[$display_id]['display_options']['sorts']['ai_sorting']['cache_max_age'];
-    }
-    elseif (isset($view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'])) {
-      $ai_sorting_cache = (int) $view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'];
-    }
-
-    // Fallback to options or default.
-    if ($ai_sorting_cache === NULL) {
-      $ai_sorting_cache = $this->options['cache_max_age'] ?? 60;
-    }
-
-    // Get site-wide page cache configuration.
-    $site_config = \Drupal::config('system.performance');
-    $site_page_cache = $site_config->get('cache.page.max_age');
-
-    // Debug logging.
-    $logger = $this->loggerFactory->get('ai_sorting');
-    $logger->info('AI Sorting Cache Debug: AI cache=@ai, Site cache=@site, Display=@display', [
-      '@ai' => $ai_sorting_cache,
-      '@site' => $site_page_cache,
-      '@display' => $display_id,
-    ]);
-
-    // If site cache is disabled (0) or AI Sorting cache is longer/equal,
-    // leave page cache unchanged.
-    if ($site_page_cache == 0 || $ai_sorting_cache >= $site_page_cache) {
-      $logger->info('AI Sorting: Not overriding cache (site=@site, ai=@ai)', [
-        '@site' => $site_page_cache,
-        '@ai' => $ai_sorting_cache,
-      ]);
-      return;
-    }
-
-    $logger->info('AI Sorting: Overriding cache from @site to @ai seconds', [
-      '@site' => $site_page_cache,
-      '@ai' => $ai_sorting_cache,
-    ]);
-
-    // AI Sorting cache is shorter than site cache - store for subscriber.
-    // Store the desired cache time in a static variable for subscriber.
-    $cache_override = &drupal_static('ai_sorting_cache_override');
-    $cache_override = $ai_sorting_cache;
   }
 
 }
