@@ -37,18 +37,13 @@
               formData.append('arm_ids', entityIds.join(','));
 
               // Use sendBeacon for non-blocking request
-              var success = navigator.sendBeacon(rlEndpointUrl, formData);
-              if (!success) {
-                console.warn('AI Sorting: Failed to send turns data to RL endpoint');
-              }
+              navigator.sendBeacon(rlEndpointUrl, formData);
               
               observer.unobserve(view);
             }
           }, {threshold: 0.1});
           
           observer.observe(view);
-        } else {
-          console.warn('AI Sorting: No entity IDs found for turns tracking');
         }
 
         // Track rewards (when links are clicked)
@@ -70,15 +65,10 @@
                 formData.append('arm_id', entityId);
 
                 // Use sendBeacon for non-blocking request
-                var success = navigator.sendBeacon(rlEndpointUrl, formData);
-                if (!success) {
-                  console.warn('AI Sorting: Failed to send reward data to RL endpoint for entity ' + entityId);
-                }
+                navigator.sendBeacon(rlEndpointUrl, formData);
               });
             }
           });
-        } else {
-          console.warn('AI Sorting: No entity URL map found for rewards tracking');
         }
       });
     }
