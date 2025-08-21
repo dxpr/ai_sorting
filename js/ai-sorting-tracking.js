@@ -9,13 +9,16 @@
 
       once('ai-sorting-tracking', '.view', context).forEach(function(view) {
         var viewIdClass = Array.from(view.classList).find(cls => cls.startsWith('view-id-'));
+        var displayIdClass = Array.from(view.classList).find(cls => cls.startsWith('view-display-id-'));
         var viewId = viewIdClass ? viewIdClass.replace('view-id-', '') : 'unknown';
+        var displayId = displayIdClass ? displayIdClass.replace('view-display-id-', '') : 'unknown';
+        var viewDisplayKey = viewId + '.' + displayId;
 
-        if (!settings.aiSorting.views[viewId]) {
+        if (!settings.aiSorting.views[viewDisplayKey]) {
           return;
         }
 
-        var viewSettings = settings.aiSorting.views[viewId];
+        var viewSettings = settings.aiSorting.views[viewDisplayKey];
         var experimentId = viewSettings.experimentId;
         var entityIds = viewSettings.entityIds;
         var entityUrlMap = viewSettings.entityUrlMap;

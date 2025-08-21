@@ -109,7 +109,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
 
     // Attach JavaScript library and settings.
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_tracking';
-    $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id()] = [
+    $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id() . '.' . $view->current_display] = [
       'experimentId' => $experiment_id,
       'entityIds' => $entity_ids,
       'entityUrlMap' => $entity_url_map,
