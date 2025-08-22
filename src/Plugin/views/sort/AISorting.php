@@ -92,7 +92,7 @@ class AISorting extends SortPluginBase {
   protected function defineOptions() {
     $options = parent::defineOptions();
     $options['order'] = ['default' => ''];
-    $options['cache_max_age'] = ['default' => 60];
+    $options['cache_max_age'] = ['default' => 1];
     $options['favor_recent'] = ['default' => FALSE];
     // 3 months default
     $options['time_window_seconds'] = ['default' => 7776000];
@@ -152,6 +152,11 @@ class AISorting extends SortPluginBase {
         if (isset($row->$base_field)) {
           $arm_ids[] = (string) $row->$base_field;
         }
+      }
+
+      // If no content to sort, skip AI scoring entirely.
+      if (empty($arm_ids)) {
+        return;
       }
 
       // Pass all arm IDs to the RL module to get scores.
