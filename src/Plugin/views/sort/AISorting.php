@@ -259,23 +259,6 @@ class AISorting extends SortPluginBase {
       '#description' => $this->t('Only recently active content influences recommendations.'),
     ];
 
-    $form['ai_sorting_settings']['help'] = [
-      '#type' => 'details',
-      '#title' => $this->t('Which timeframe should I choose?'),
-      '#open' => FALSE,
-      '#states' => [
-        'visible' => [
-          ':input[name="options[ai_sorting_settings][favor_recent]"]' => ['checked' => TRUE],
-        ],
-      ],
-      '#description' => $this->t('
-        <strong>News & announcements:</strong> Last month<br>
-        <strong>Blog posts:</strong> Last 3 months<br>
-        <strong>Products:</strong> Last 6 months<br>
-        <strong>Leave unchecked for:</strong> Documentation, tutorials, evergreen content
-      '),
-    ];
-
     $form['ai_sorting_settings']['advanced'] = [
       '#type' => 'details',
       '#title' => $this->t('Advanced Settings'),
