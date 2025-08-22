@@ -195,12 +195,9 @@ class AISorting extends SortPluginBase {
 
       // Override page cache if AI Sorting cache is shorter than site cache.
       $view_config = $this->view->storage->get('display');
-      $ai_sorting_cache = (int) ($view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'] ?? 60);
+      $ai_sorting_cache = (int) ($view_config['default']['display_options']['sorts']['ai_sorting']['cache_max_age'] ?? 1);
 
-      // Only override if not set to "use site default" (-1)
-      if ($ai_sorting_cache !== -1) {
-        $this->cacheManager->overridePageCacheIfShorter($ai_sorting_cache);
-      }
+      $this->cacheManager->overridePageCacheIfShorter($ai_sorting_cache);
 
     }
     catch (\Exception $e) {
@@ -268,17 +265,16 @@ class AISorting extends SortPluginBase {
     $form['ai_sorting_settings']['advanced']['cache_max_age'] = [
       '#type' => 'select',
       '#title' => $this->t('Browser and proxy cache maximum age'),
-      '#default_value' => $this->options['cache_max_age'],
+      '#default_value' => $this->options['cache_max_age'] ?? 1,
       '#options' => [
-        -1 => $this->t('Use site default (no override)'),
         0 => $this->t('Never cache'),
+        1 => $this->t('1 second'),
+        5 => $this->t('5 seconds'),
         30 => $this->t('30 seconds'),
         60 => $this->t('1 minute'),
-        120 => $this->t('2 minutes'),
         300 => $this->t('5 minutes'),
-        600 => $this->t('10 minutes'),
       ],
-      '#description' => $this->t('Choose "Use site default" to respect site-wide page cache settings without override. Other values will override page cache only if shorter than site cache. For views sorting fewer than 10,000 nodes, a 1-minute cache lifetime is recommended. For views sorting more than 10,000 nodes, a 5-minute cache lifetime is recommended. Be aware that a longer cache time may affect Thompson Sampling randomization, which benefits from fresh data.'),
+      '#description' => $this->t('Lower values improve AI learning speed.'),
       '#required' => TRUE,
     ];
   }
