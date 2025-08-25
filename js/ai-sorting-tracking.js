@@ -29,29 +29,42 @@
           throw new Error('AI Sorting: Missing required experiment data (experimentId or rlEndpointUrl)');
         }
 
-        // Track turns (when view becomes visible)
-        if (entityIds && entityIds.length > 0) {
-          var observer = new IntersectionObserver(function(entries) {
-            if (entries[0].isIntersecting) {
-              // Create FormData for POST request to rl.php
+        // Track rewards (when links are clicked) and turns (when links become visible)
+        if (entityUrlMap && Object.keys(entityUrlMap).length > 0) {
+          var links = view.querySelectorAll('a');
+          var visibleArms = [];
+          var batchTimer = null;
+          
+          // Function to send batched turns
+          function sendBatchedTurns() {
+            if (visibleArms.length > 0) {
               var formData = new FormData();
               formData.append('action', 'turns');
               formData.append('experiment_id', experimentId);
-              formData.append('arm_ids', entityIds.join(','));
-
-              // Use sendBeacon for non-blocking request
-              navigator.sendBeacon(rlEndpointUrl, formData);
+              formData.append('arm_ids', visibleArms.join(','));
               
-              observer.unobserve(view);
+              navigator.sendBeacon(rlEndpointUrl, formData);
+              visibleArms = [];
             }
-          }, {threshold: 0.1});
+          }
           
-          observer.observe(view);
-        }
-
-        // Track rewards (when links are clicked)
-        if (entityUrlMap && Object.keys(entityUrlMap).length > 0) {
-          var links = view.querySelectorAll('a');
+          // Create a single observer for all links in this view
+          var turnObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+              if (entry.isIntersecting) {
+                var entityId = entry.target.dataset.entityId;
+                if (entityId && !entry.target.dataset.tracked) {
+                  visibleArms.push(entityId);
+                  entry.target.dataset.tracked = 'true';
+                  turnObserver.unobserve(entry.target);
+                  
+                  // Clear existing timer and set new one
+                  clearTimeout(batchTimer);
+                  batchTimer = setTimeout(sendBatchedTurns, 100);
+                }
+              }
+            });
+          }, {threshold: 0.1});
           
           links.forEach(function(link) {
             var href = link.getAttribute('href');
@@ -60,6 +73,10 @@
             if (entityId) {
               link.dataset.entityId = entityId;
               
+              // Observe for visibility tracking
+              turnObserver.observe(link);
+              
+              // Track reward when clicked
               link.addEventListener('click', function() {
                 // Create FormData for POST request to rl.php
                 var formData = new FormData();
