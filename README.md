@@ -1,4 +1,4 @@
-# AI Sorting - Self-Learning A/B Testing for Content
+# AI Sorting - Self-Learning A/B Testing for Content :)
 
 Advanced A/B testing for Drupal Views that learns automatically. Instead of
 manually setting up A/B tests, AI Sorting continuously tests all content
