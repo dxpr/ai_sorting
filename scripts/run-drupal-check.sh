@@ -1,7 +1,7 @@
 #!/bin/bash
 set -vo pipefail
 
-DRUPAL_RECOMMENDED_PROJECT=${DRUPAL_RECOMMENDED_PROJECT:-10.3.x-dev}
+DRUPAL_RECOMMENDED_PROJECT=${DRUPAL_RECOMMENDED_PROJECT:-11.0.0}
 PHP_EXTENSIONS="gd"
 DRUPAL_CHECK_TOOL="mglaman/drupal-check"
 
@@ -15,7 +15,7 @@ done
 
 # Create Drupal project if it doesn't exist
 if [ ! -d "/drupal" ]; then
-  composer create-project drupal/recommended-project=$DRUPAL_RECOMMENDED_PROJECT drupal --no-interaction --stability=dev
+  composer create-project drupal/recommended-project=$DRUPAL_RECOMMENDED_PROJECT drupal --no-interaction --prefer-dist
 fi
 
 cd drupal
@@ -34,5 +34,5 @@ fi
 # Install drupal-check
 composer require $DRUPAL_CHECK_TOOL --dev
 
-# Run drupal-check
+
 ./vendor/bin/drupal-check --drupal-root . -ad web/modules/contrib/ai_sorting 
