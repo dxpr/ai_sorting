@@ -34,8 +34,5 @@ fi
 # Install drupal-check
 composer require $DRUPAL_CHECK_TOOL --dev
 
-# Run drupal-check with timeout
-timeout 300 ./vendor/bin/drupal-check --drupal-root . -ad web/modules/contrib/ai_sorting || {
-    echo "drupal-check timed out after 5 minutes or failed"
-    exit 1
-} 
+
+./vendor/bin/drupal-check --drupal-root . -ad web/modules/contrib/ai_sorting 
