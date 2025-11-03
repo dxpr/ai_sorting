@@ -1,38 +1,54 @@
 #!/bin/bash
+
 set -vo pipefail
 
-DRUPAL_RECOMMENDED_PROJECT=${DRUPAL_RECOMMENDED_PROJECT:-11.0.0}
-PHP_EXTENSIONS="gd"
-DRUPAL_CHECK_TOOL="mglaman/drupal-check"
+# Install required libs for Drupal
+GD_ENABLED=$(php -i | grep 'GD Support' | awk '{ print $4 }')
 
-# Install required PHP extensions
-for ext in $PHP_EXTENSIONS; do
-  if ! php -m | grep -q $ext; then
-    apk update && apk add --no-cache ${ext}-dev
-    docker-php-ext-install $ext
-  fi
-done
-
-# Create Drupal project if it doesn't exist
-if [ ! -d "/drupal" ]; then
-  composer create-project drupal/recommended-project=$DRUPAL_RECOMMENDED_PROJECT drupal --no-interaction --prefer-dist
+if [ "$GD_ENABLED" != 'enabled' ]; then
+  apk update && \
+  apk add libpng libpng-dev libjpeg-turbo-dev libwebp-dev zlib-dev libxpm-dev gd tree rsync && docker-php-ext-install gd
 fi
 
-cd drupal
+# Create project in a temporary directory inside the container
+INSTALL_DIR="/drupal_install_tmp"
+composer create-project drupal/recommended-project:11.x-dev "$INSTALL_DIR" --no-interaction --stability=dev
+
+cd "$INSTALL_DIR"
+
+# Allow specific plugins needed by dependencies before requiring them.
+composer config --no-plugins allow-plugins.tbachert/spi true --no-interaction
+
+# Create phpstan.neon config file
+cat <<EOF > phpstan.neon
+parameters:
+    paths:
+        - web/modules/contrib/ai_sorting
+    # Set the analysis level (0-9)
+    level: 5
+    # Treat PHPDoc types as less certain to avoid false positives with Drupal API methods
+    treatPhpDocTypesAsCertain: false
+EOF
+
 mkdir -p web/modules/contrib/
 
-# Symlink ai_sorting if not already linked
 if [ ! -L "web/modules/contrib/ai_sorting" ]; then
   ln -s /src web/modules/contrib/ai_sorting
 fi
 
-# Install the statistic modules if D11 (removed from core).
-if [[ $DRUPAL_RECOMMENDED_PROJECT == 11.* ]]; then
-  composer require drupal/statistics
+# Install required module dependencies for PHPStan analysis
+# ai_sorting depends on drupal:views and rl:rl
+composer require drupal/views --no-interaction
+
+# Symlink rl module (dependency of ai_sorting)
+if [ -d "/src/../rl" ]; then
+  if [ ! -L "web/modules/contrib/rl" ]; then
+    ln -s /src/../rl web/modules/contrib/rl
+  fi
 fi
 
-# Install drupal-check
-composer require $DRUPAL_CHECK_TOOL --dev
+# Install PHPStan extensions for Drupal 11 and Drush for command analysis
+composer require --dev phpstan/phpstan mglaman/phpstan-drupal phpstan/phpstan-deprecation-rules drush/drush --with-all-dependencies --no-interaction
 
-
-./vendor/bin/drupal-check --drupal-root . -ad web/modules/contrib/ai_sorting 
+# Run phpstan
+./vendor/bin/phpstan analyse --memory-limit=-1 -c phpstan.neon 
