@@ -14,7 +14,7 @@ class ExperimentRegistrationService {
    *
    * @var \Drupal\rl\Registry\ExperimentRegistryInterface
    */
-  protected $experimentRegistry;
+  protected ExperimentRegistryInterface $experimentRegistry;
 
   /**
    * Constructs a new ExperimentRegistrationService.

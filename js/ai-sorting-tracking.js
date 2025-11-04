@@ -72,12 +72,24 @@
             
             if (entityId) {
               link.dataset.entityId = entityId;
-              
+
               // Observe for visibility tracking
               turnObserver.observe(link);
-              
+
+              // Session storage key for tracking rewarded experiments in this page load.
+              var storageKey = 'ai_sorting_rewarded_' + experimentId;
+
               // Track reward when clicked
               link.addEventListener('click', function() {
+                // Check if we've already sent a reward for this experiment in this page load.
+                if (sessionStorage.getItem(storageKey)) {
+                  // Already rewarded this turn, skip.
+                  return;
+                }
+
+                // Mark this experiment as rewarded for this page load.
+                sessionStorage.setItem(storageKey, '1');
+
                 // Create FormData for POST request to rl.php
                 var formData = new FormData();
                 formData.append('action', 'reward');
