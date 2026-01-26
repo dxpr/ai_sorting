@@ -232,11 +232,11 @@ class AISorting extends SortPluginBase {
       '#title' => $this->t('AI Sorting Settings'),
       '#open' => TRUE,
       '#description' => $this->t('<strong>What does AI Sorting do?</strong><br>
-        AI Sorting uses machine learning to automatically order content based on user engagement. It learns which content gets clicked more often and gradually shows the most engaging content first, while still giving new content a chance to be discovered.<br><br>
+        AI Sorting automatically orders content based on user engagement. It learns which content gets clicked more often and shows the most engaging content first, while still giving new content a chance to be discovered.<br><br>
         <strong>How it works:</strong><br>
-        • <em>Turns</em>: When content appears in this view<br>
-        • <em>Rewards</em>: When users click on that content<br>
-        • The algorithm balances showing popular content with exploring new options.'),
+        • <em>Impressions</em>: When content appears in this view<br>
+        • <em>Conversions</em>: When users click on that content<br>
+        • The system balances showing popular content with exploring new options.'),
     ];
 
     $form['ai_sorting_settings']['favor_recent'] = [
