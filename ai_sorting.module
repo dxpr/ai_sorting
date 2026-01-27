@@ -118,6 +118,9 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       'rlEndpointUrl' => "{$base_path}/{$rl_path}/rl.php",
       'displayId' => $view->current_display,
     ];
+
+    // Add RL experiment highlight class for visual branding.
+    $view->element['#attributes']['class'][] = 'rl-experiment';
   }
 }
 
