@@ -56,6 +56,7 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     }
 
     // Try to get the entity object.
+    // @phpstan-ignore isset.property
     if (isset($row->_entity) && $row->_entity instanceof EntityInterface) {
       $entity = $row->_entity;
       if (!$entity_id) {

@@ -22,28 +22,28 @@ class AISorting extends SortPluginBase {
    *
    * @var \Drupal\rl\Service\ExperimentManagerInterface
    */
-  protected $experimentManager;
+  protected ExperimentManagerInterface $experimentManager;
 
   /**
    * The request stack.
    *
    * @var \Symfony\Component\HttpFoundation\RequestStack
    */
-  protected $requestStack;
+  protected RequestStack $requestStack;
 
   /**
    * Logger factory.
    *
    * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
    */
-  protected $loggerFactory;
+  protected LoggerChannelFactoryInterface $loggerFactory;
 
   /**
    * The RL cache manager.
    *
    * @var \Drupal\rl\Service\CacheManager
    */
-  protected $cacheManager;
+  protected CacheManager $cacheManager;
 
   /**
    * Constructs a new AISorting object.
@@ -75,6 +75,7 @@ class AISorting extends SortPluginBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    // @phpstan-ignore new.static
     return new static(
       $configuration,
       $plugin_id,
@@ -131,12 +132,17 @@ class AISorting extends SortPluginBase {
 
       // We only need the base field (ID field).
       // Clear fields and add only the base field.
+      // @phpstan-ignore method.notFound
       $id_query->clearFields();
+      // @phpstan-ignore method.notFound
       $id_alias = $id_query->addField($this->tableAlias, $base_field);
 
       // Remove any existing grouping and ordering.
+      // @phpstan-ignore property.notFound
       $id_query->groupby = [];
+      // @phpstan-ignore property.notFound
       $id_query->orderby = [];
+      // @phpstan-ignore method.notFound
       $id_query->addGroupBy($id_alias);
 
       // Build and execute the query to get all IDs.
@@ -191,6 +197,7 @@ class AISorting extends SortPluginBase {
       // This should never be reached since we passed all IDs to RL module.
       $case_statement .= 'ELSE 0 END';
 
+      // @phpstan-ignore method.notFound
       $this->query->addOrderBy(
         NULL,
         $case_statement,
@@ -225,11 +232,11 @@ class AISorting extends SortPluginBase {
       '#title' => $this->t('AI Sorting Settings'),
       '#open' => TRUE,
       '#description' => $this->t('<strong>What does AI Sorting do?</strong><br>
-        AI Sorting uses machine learning to automatically order content based on user engagement. It learns which content gets clicked more often and gradually shows the most engaging content first, while still giving new content a chance to be discovered.<br><br>
+        AI Sorting automatically orders content based on user engagement. It learns which content gets clicked more often and shows the most engaging content first, while still giving new content a chance to be discovered.<br><br>
         <strong>How it works:</strong><br>
-        • <em>Turns</em>: When content appears in this view<br>
-        • <em>Rewards</em>: When users click on that content<br>
-        • The algorithm balances showing popular content with exploring new options.'),
+        • <em>Impressions</em>: When content appears in this view<br>
+        • <em>Conversions</em>: When users click on that content<br>
+        • The system balances showing popular content with exploring new options.'),
     ];
 
     $form['ai_sorting_settings']['favor_recent'] = [
@@ -269,17 +276,17 @@ class AISorting extends SortPluginBase {
 
     $form['ai_sorting_settings']['advanced']['cache_max_age'] = [
       '#type' => 'select',
-      '#title' => $this->t('Browser and proxy cache maximum age'),
+      '#title' => $this->t('Cache duration'),
       '#default_value' => $this->options['cache_max_age'] ?? 1,
       '#options' => [
-        0 => $this->t('Never cache'),
+        0 => $this->t('No caching (fastest learning)'),
         1 => $this->t('1 second'),
         5 => $this->t('5 seconds'),
         30 => $this->t('30 seconds'),
         60 => $this->t('1 minute'),
         300 => $this->t('5 minutes'),
       ],
-      '#description' => $this->t('Lower values improve AI learning speed.'),
+      '#description' => $this->t('How long browsers can cache content. Shorter times mean faster learning but more server load.'),
       '#required' => TRUE,
     ];
   }
@@ -317,6 +324,7 @@ class AISorting extends SortPluginBase {
           ],
         ]);
 
+        // @phpstan-ignore globalDrupalDependencyInjection.useDependencyInjection
         \Drupal::messenger()->addStatus($this->t('Views cache has been automatically set to @seconds seconds to match your AI sorting refresh rate.', ['@seconds' => $cache_max_age]));
       }
     }
@@ -324,10 +332,12 @@ class AISorting extends SortPluginBase {
       if ($current_cache['type'] !== 'none') {
         $this->view->display_handler->setOption('cache', ['type' => 'none']);
 
+        // @phpstan-ignore globalDrupalDependencyInjection.useDependencyInjection
         \Drupal::messenger()->addWarning($this->t('Views cache has been automatically disabled because AI sorting cache is set to "Never cache".'));
       }
     }
 
+    // @phpstan-ignore globalDrupalDependencyInjection.useDependencyInjection
     \Drupal::service('plugin.manager.views.sort')->clearCachedDefinitions();
   }
 

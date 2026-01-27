@@ -37,18 +37,10 @@ if [ ! -L "web/modules/contrib/ai_sorting" ]; then
 fi
 
 # Install required module dependencies for PHPStan analysis
-# ai_sorting depends on drupal:views and rl:rl
-composer require drupal/views --no-interaction
-
-# Symlink rl module (dependency of ai_sorting)
-if [ -d "/src/../rl" ]; then
-  if [ ! -L "web/modules/contrib/rl" ]; then
-    ln -s /src/../rl web/modules/contrib/rl
-  fi
-fi
+composer require drupal/rl --no-interaction
 
 # Install PHPStan extensions for Drupal 11 and Drush for command analysis
 composer require --dev phpstan/phpstan mglaman/phpstan-drupal phpstan/phpstan-deprecation-rules drush/drush --with-all-dependencies --no-interaction
 
 # Run phpstan
-./vendor/bin/phpstan analyse --memory-limit=-1 -c phpstan.neon 
+./vendor/bin/phpstan analyse --memory-limit=-1 -c phpstan.neon
