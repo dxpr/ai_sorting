@@ -5,6 +5,7 @@
  * Primary module file for AI Sorting.
  */
 
+use Drupal\Core\Url;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\views\ViewExecutable;
@@ -118,6 +119,45 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
       'displayId' => $view->current_display,
     ];
   }
+}
+
+/**
+ * Implements hook_contextual_links_view_alter().
+ */
+function ai_sorting_contextual_links_view_alter(&$element, $items) {
+  // Only proceed if this is a view contextual link group.
+  if (!isset($items['entity.view.edit_form']['metadata']['name']) ||
+      !isset($items['entity.view.edit_form']['metadata']['display_id'])) {
+    return;
+  }
+
+  $view_id = $items['entity.view.edit_form']['metadata']['name'];
+  $display_id = $items['entity.view.edit_form']['metadata']['display_id'];
+
+  // Check if this view/display uses ai_sorting.
+  $view_storage = \Drupal::entityTypeManager()->getStorage('view')->load($view_id);
+  if (!$view_storage) {
+    return;
+  }
+
+  $display = $view_storage->getDisplay($display_id);
+  if (!isset($display['display_options']['sorts']['ai_sorting']) &&
+      !isset($view_storage->get('display')['default']['display_options']['sorts']['ai_sorting'])) {
+    return;
+  }
+
+  // Build experiment ID matching the format in ai_sorting_views_pre_render().
+  $experiment_id = 'ai_sorting-' . $view_id . '-' . $display_id;
+  $experiment_id = preg_replace('/[^a-zA-Z0-9_-]/', '_', $experiment_id);
+
+  // Add the "View experiment" link directly.
+  $element['#links']['ai_sorting_view_experiment'] = [
+    'title' => t('View experiment'),
+    'url' => Url::fromRoute('rl.reports.experiment_detail', [
+      'experiment_id' => $experiment_id,
+    ]),
+    'weight' => 10,
+  ];
 }
 
 /**
