@@ -109,10 +109,16 @@ function ai_sorting_views_pre_render(ViewExecutable $view) {
     $rl_path = \Drupal::service('extension.list.module')->getPath('rl');
     $base_path = \Drupal::request()->getBasePath();
 
+    // Generate experiment report URL.
+    $experiment_url = Url::fromRoute('rl.reports.experiment_detail', [
+      'experiment_id' => $experiment_id,
+    ])->toString();
+
     // Attach JavaScript library and settings.
     $view->element['#attached']['library'][] = 'ai_sorting/ai_sorting_tracking';
     $view->element['#attached']['drupalSettings']['aiSorting']['views'][$view->id() . '.' . $view->current_display] = [
       'experimentId' => $experiment_id,
+      'experimentUrl' => $experiment_url,
       'entityIds' => $entity_ids,
       'entityUrlMap' => $entity_url_map,
       'rlEndpointUrl' => "{$base_path}/{$rl_path}/rl.php",
