@@ -1,4 +1,8 @@
-# AI Sorting - Self-Learning A/B Testing for Content
+> Part of [DXPR CMS](https://dxpr.com/c/marketing-cms) | The AI-Powered Drupal CMS
+>
+> [Documentation](https://dxpr.com/docs) | [Try Free](https://dxpr.com/try) | [dxpr.com](https://dxpr.com)
+
+# AI Sorting: Self-Learning A/B Testing and Content Optimization for Drupal
 
 Advanced A/B testing for Drupal Views that learns automatically. Instead of
 manually setting up A/B tests, AI Sorting continuously tests all content
@@ -72,3 +76,9 @@ Unlike traditional A/B testing tools, AI Sorting provides:
 
 - [RL module](https://www.drupal.org/project/rl) - Core Thompson Sampling
   algorithm and API for developers
+
+## Related DXPR Modules
+
+- [RL (Reinforcement Learning)](https://www.drupal.org/project/rl) - Thompson Sampling algorithm and API for developers
+- [RL Sorting](https://www.drupal.org/project/rl_sorting) - Views sort plugin powered by reinforcement learning
+- [Analyze](https://www.drupal.org/project/analyze) - Content analysis framework with unified Analyze tab
