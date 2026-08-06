@@ -6,6 +6,75 @@ env:
   TARGET_DRUPAL_CORE_VERSION: 11
 
 jobs:
+  changes:
+    runs-on: ubicloud-standard-4
+    permissions:
+      pull-requests: read
+    outputs:
+      js: ${{ steps.filter.outputs.js }}
+    steps:
+    - uses: actions/checkout@v6
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          js:
+            - '**/*.js'
+
+  eslint:
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v6
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint
+      id: lint
+      run: |
+        set +e
+        npx eslint . 2>&1 | tee eslint-output.txt
+        echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+    - name: Create summary
+      if: always()
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require('fs');
+          const output = fs.readFileSync('eslint-output.txt', 'utf8');
+          const errorMatch = output.match(/(\d+) errors?/);
+          const warnMatch = output.match(/(\d+) warnings?/);
+          const problemMatch = output.match(/(\d+) problems?/);
+          const errors = errorMatch ? errorMatch[1] : '0';
+          const warnings = warnMatch ? warnMatch[1] : '0';
+          const problems = problemMatch ? problemMatch[1] : '0';
+          await core.summary
+            .addHeading('ESLint Results')
+            .addTable([
+              [{data: 'Metric', header: true}, {data: 'Count', header: true}],
+              ['Problems', problems],
+              ['Errors', errors],
+              ['Warnings', warnings],
+            ])
+            .write();
+
+    - name: Fail if lint errors
+      if: always()
+      run: |
+        if [ "${{ steps.lint.outputs.exit_code }}" != "0" ]; then
+          echo "ESLint found issues. See output above."
+          exit 1
+        fi
+
   drupal-lint:
     runs-on: ubicloud-standard-4
     timeout-minutes: 60
