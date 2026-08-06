@@ -2,27 +2,24 @@
   'use strict';
 
   Drupal.behaviors.aiSortingTracking = {
-    attach: function (context, settings) {
-      if (!settings.aiSorting || !settings.aiSorting.views) {
+    attach(context, settings) {
+      if (!settings.aiSorting?.views) {
         return;
       }
 
-      once('ai-sorting-tracking', '.view', context).forEach(function(view) {
-        var viewIdClass = Array.from(view.classList).find(cls => cls.startsWith('view-id-'));
-        var displayIdClass = Array.from(view.classList).find(cls => cls.startsWith('view-display-id-'));
-        var viewId = viewIdClass ? viewIdClass.replace('view-id-', '') : 'unknown';
-        var displayId = displayIdClass ? displayIdClass.replace('view-display-id-', '') : 'unknown';
-        var viewDisplayKey = viewId + '.' + displayId;
+      once('ai-sorting-tracking', '.view', context).forEach((view) => {
+        const viewIdClass = Array.from(view.classList).find(cls => cls.startsWith('view-id-'));
+        const displayIdClass = Array.from(view.classList).find(cls => cls.startsWith('view-display-id-'));
+        const viewId = viewIdClass ? viewIdClass.replace('view-id-', '') : 'unknown';
+        const displayId = displayIdClass ? displayIdClass.replace('view-display-id-', '') : 'unknown';
+        const viewDisplayKey = `${viewId}.${displayId}`;
 
         if (!settings.aiSorting.views[viewDisplayKey]) {
           return;
         }
 
-        var viewSettings = settings.aiSorting.views[viewDisplayKey];
-        var experimentId = viewSettings.experimentId;
-        var entityIds = viewSettings.entityIds;
-        var entityUrlMap = viewSettings.entityUrlMap;
-        var rlEndpointUrl = viewSettings.rlEndpointUrl;
+        const { experimentId, entityUrlMap, rlEndpointUrl }
+          = settings.aiSorting.views[viewDisplayKey];
 
         // Fail hard if required data is missing
         if (!experimentId || !rlEndpointUrl) {
@@ -31,45 +28,45 @@
 
         // Track rewards (when links are clicked) and turns (when links become visible)
         if (entityUrlMap && Object.keys(entityUrlMap).length > 0) {
-          var links = view.querySelectorAll('a');
-          var visibleArms = [];
-          var batchTimer = null;
-          
-          // Function to send batched turns
-          function sendBatchedTurns() {
+          const links = view.querySelectorAll('a');
+          let visibleArms = [];
+          let batchTimer = null;
+
+          // Send batched impression turns via sendBeacon
+          const sendBatchedTurns = () => {
             if (visibleArms.length > 0) {
-              var formData = new FormData();
+              const formData = new FormData();
               formData.append('action', 'turns');
               formData.append('experiment_id', experimentId);
               formData.append('arm_ids', visibleArms.join(','));
-              
+
               navigator.sendBeacon(rlEndpointUrl, formData);
               visibleArms = [];
             }
-          }
-          
+          };
+
           // Create a single observer for all links in this view
-          var turnObserver = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
+          const turnObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
               if (entry.isIntersecting) {
-                var entityId = entry.target.dataset.entityId;
+                const entityId = entry.target.dataset.entityId;
                 if (entityId && !entry.target.dataset.tracked) {
                   visibleArms.push(entityId);
                   entry.target.dataset.tracked = 'true';
                   turnObserver.unobserve(entry.target);
-                  
+
                   // Clear existing timer and set new one
                   clearTimeout(batchTimer);
                   batchTimer = setTimeout(sendBatchedTurns, 100);
                 }
               }
             });
-          }, {threshold: 0.1});
-          
-          links.forEach(function(link) {
-            var href = link.getAttribute('href');
-            var entityId = Object.keys(entityUrlMap).find(id => entityUrlMap[id] === href);
-            
+          }, { threshold: 0.1 });
+
+          links.forEach((link) => {
+            const href = link.getAttribute('href');
+            const entityId = Object.keys(entityUrlMap).find(id => entityUrlMap[id] === href);
+
             if (entityId) {
               link.dataset.entityId = entityId;
 
@@ -77,10 +74,10 @@
               turnObserver.observe(link);
 
               // Session storage key for tracking rewarded experiments in this page load.
-              var storageKey = 'ai_sorting_rewarded_' + experimentId;
+              const storageKey = `ai_sorting_rewarded_${experimentId}`;
 
               // Track reward when clicked
-              link.addEventListener('click', function() {
+              link.addEventListener('click', () => {
                 // Check if we've already sent a reward for this experiment in this page load.
                 if (sessionStorage.getItem(storageKey)) {
                   // Already rewarded this turn, skip.
@@ -91,7 +88,7 @@
                 sessionStorage.setItem(storageKey, '1');
 
                 // Create FormData for POST request to rl.php
-                var formData = new FormData();
+                const formData = new FormData();
                 formData.append('action', 'reward');
                 formData.append('experiment_id', experimentId);
                 formData.append('arm_id', entityId);
@@ -103,6 +100,6 @@
           });
         }
       });
-    }
+    },
   };
 })(Drupal, once);
